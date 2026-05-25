@@ -1,0 +1,212 @@
+.thumb {
+  margin-right: 12rpx;
+}
+
+.photo-strip {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.thumb-active {
+  border: 6rpx solid #ffcf56;
+}
+
+.compact-actions {
+  margin-top: 16rpx;
+}
+
+.compact-actions button {
+  flex: 1;
+}
+
+.setting-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14rpx;
+  margin-top: 16rpx;
+}
+
+.tight-grid {
+  margin-top: 0;
+  margin-bottom: 16rpx;
+}
+
+.setting-pill {
+  min-height: 72rpx;
+  padding: 18rpx;
+  border: 4rpx solid rgba(47, 110, 163, 0.32);
+  border-radius: 16rpx;
+  background: #ffffff;
+  color: #263447;
+  font-size: 24rpx;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.subject-card {
+  margin-top: 18rpx;
+  padding: 18rpx;
+  border: 4rpx solid rgba(47, 110, 163, 0.26);
+  border-radius: 16rpx;
+  background: #ffffff;
+}
+
+.subject-preview-wrap {
+  position: relative;
+  width: 100%;
+  height: 420rpx;
+  overflow: hidden;
+  border: 4rpx solid rgba(47, 110, 163, 0.34);
+  border-radius: 16rpx;
+  background: #263447;
+}
+
+.subject-preview {
+  width: 100%;
+  height: 100%;
+}
+
+.subject-mask {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(38, 52, 71, 0.12);
+  pointer-events: none;
+}
+
+.subject-point {
+  position: absolute;
+  width: 72rpx;
+  height: 72rpx;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.subject-ring {
+  width: 100%;
+  height: 100%;
+  border: 6rpx solid #ffcf56;
+  border-radius: 999rpx;
+  box-shadow: 0 0 0 6rpx rgba(255, 255, 255, 0.82);
+}
+
+.subject-box {
+  position: absolute;
+  border: 6rpx solid #ffcf56;
+  border-radius: 18rpx;
+  background: rgba(255, 207, 86, 0.16);
+  box-shadow: 0 0 0 6rpx rgba(255, 255, 255, 0.72);
+  pointer-events: none;
+}
+
+.hint {
+  margin-top: 12rpx;
+  color: #667789;
+  font-size: 24rpx;
+  line-height: 1.55;
+}
+
+.board-card {
+  margin-top: 18rpx;
+  padding: 18rpx;
+  border: 4rpx solid rgba(255, 207, 86, 0.72);
+  border-radius: 16rpx;
+  background: #fffdf4;
+}
+
+.sticker-board {
+  position: relative;
+  width: 100%;
+  height: 440rpx;
+  overflow: hidden;
+  border: 4rpx dashed rgba(47, 110, 163, 0.36);
+  border-radius: 16rpx;
+  background: #fff8df;
+}
+
+.board-sticker {
+  position: absolute;
+  border: 4rpx solid transparent;
+}
+
+.board-sticker-active {
+  border-color: #2f6ea3;
+  border-radius: 18rpx;
+  box-shadow: 0 0 0 6rpx rgba(255, 255, 255, 0.82);
+}
+
+.control-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.compact-button {
+  min-height: 68rpx;
+  padding: 0 8rpx;
+  font-size: 22rpx;
+  line-height: 68rpx;
+}
+
+.danger-button {
+  border-color: #cf5a4f;
+  color: #cf5a4f;
+}
+
+.export-card {
+  margin-top: 18rpx;
+  padding: 18rpx;
+  border: 4rpx solid rgba(47, 110, 163, 0.26);
+  border-radius: 16rpx;
+  background: #ffffff;
+}
+
+.card-preview-wrap {
+  width: 100%;
+  height: 520rpx;
+  overflow: hidden;
+  border: 4rpx solid rgba(47, 110, 163, 0.24);
+  border-radius: 16rpx;
+  background: #fff8df;
+}
+
+.card-preview {
+  width: 100%;
+  height: 100%;
+}
+
+.export-canvas {
+  position: fixed;
+  left: -9999px;
+  top: -9999px;
+  width: 700px;
+  height: 980px;
+}
+
+.ai-panel {
+  margin-top: 22rpx;
+  padding: 22rpx;
+  border: 4rpx solid rgba(47, 110, 163, 0.28);
+  border-radius: 16rpx;
+  background: rgba(47, 110, 163, 0.06);
+}
+
+.small-title {
+  margin-bottom: 12rpx;
+  font-size: 28rpx;
+}
+
+.full-button {
+  width: 100%;
+  margin-top: 16rpx;
+}
+
+.ai-message {
+  margin-top: 14rpx;
+  color: #667789;
+  font-size: 24rpx;
+  line-height: 1.55;
+}

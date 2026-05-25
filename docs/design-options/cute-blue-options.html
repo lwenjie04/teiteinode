@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>贴贴日记可爱蓝设计方案</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #eef8ff;
+        color: #11314c;
+        font-family:
+          -apple-system,
+          BlinkMacSystemFont,
+          "PingFang SC",
+          "Microsoft YaHei",
+          system-ui,
+          sans-serif;
+      }
+
+      .board {
+        width: 1440px;
+        min-height: 1100px;
+        padding: 34px;
+        background:
+          radial-gradient(circle at 9% 8%, rgba(117, 205, 255, 0.36), transparent 210px),
+          radial-gradient(circle at 86% 4%, rgba(255, 204, 231, 0.28), transparent 210px),
+          linear-gradient(180deg, #eaf7ff, #f8fdff);
+      }
+
+      .board-title {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        margin-bottom: 24px;
+      }
+
+      h1,
+      h2,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        margin-bottom: 6px;
+        font-size: 34px;
+        letter-spacing: 0;
+      }
+
+      .board-title p {
+        margin-bottom: 0;
+        color: #5e7c94;
+        font-size: 15px;
+      }
+
+      .principle {
+        display: flex;
+        gap: 8px;
+      }
+
+      .principle span {
+        padding: 8px 12px;
+        border: 1px solid rgba(73, 160, 220, 0.22);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.74);
+        color: #377ead;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .options {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+      }
+
+      .option {
+        display: grid;
+        gap: 12px;
+      }
+
+      .option-head {
+        min-height: 118px;
+        padding: 16px 18px;
+        border: 1px solid rgba(73, 160, 220, 0.24);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.76);
+      }
+
+      .option-head strong {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 20px;
+      }
+
+      .option-head p {
+        margin-bottom: 8px;
+        color: #607d93;
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .tags span {
+        padding: 5px 8px;
+        border-radius: 999px;
+        background: #e1f4ff;
+        color: #3382b7;
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .phone {
+        position: relative;
+        width: 100%;
+        height: 780px;
+        overflow: hidden;
+        border: 10px solid #0f2d47;
+        border-radius: 34px;
+        box-shadow: 0 20px 48px rgba(44, 121, 174, 0.2);
+      }
+
+      .screen {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        padding: 18px 14px 72px;
+      }
+
+      .hero {
+        position: relative;
+        min-height: 228px;
+        padding: 22px 18px;
+        border-radius: 26px;
+      }
+
+      .eyebrow {
+        margin-bottom: 10px;
+        color: #168dff;
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .hero h2 {
+        margin-bottom: 10px;
+        font-size: 33px;
+        line-height: 1.05;
+      }
+
+      .hero p {
+        max-width: 15rem;
+        margin-bottom: 18px;
+        color: #5b768a;
+        font-size: 15px;
+        line-height: 1.55;
+      }
+
+      .cta {
+        display: grid;
+        width: 100%;
+        height: 50px;
+        place-items: center;
+        border: 0;
+        border-radius: 18px;
+        background: #229cff;
+        color: #ffffff;
+        font-size: 16px;
+        font-weight: 900;
+      }
+
+      .quiet-link {
+        display: inline-block;
+        margin-top: 13px;
+        color: #168dff;
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .section {
+        margin-top: 14px;
+        padding: 16px;
+        border-radius: 22px;
+      }
+
+      .section-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+      }
+
+      .section-title strong {
+        font-size: 18px;
+      }
+
+      .section-title span {
+        color: #6f8ba1;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 66px 1fr;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .thumb {
+        display: grid;
+        height: 66px;
+        place-items: center;
+        border-radius: 20px;
+        color: #153855;
+        font-weight: 900;
+      }
+
+      .row strong {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 17px;
+      }
+
+      .row p {
+        margin-bottom: 6px;
+        color: #5c7689;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .row span {
+        color: #168dff;
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .tabs {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        min-height: 64px;
+        padding: 7px 8px 8px;
+        border-top: 1px solid rgba(78, 152, 205, 0.2);
+        backdrop-filter: blur(18px);
+      }
+
+      .tabs div {
+        display: grid;
+        gap: 2px;
+        place-items: center;
+        color: #87a5ba;
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .tabs .active {
+        color: #168dff;
+      }
+
+      .sparkle,
+      .bubble,
+      .tape,
+      .cloud,
+      .drop,
+      .pet {
+        position: absolute;
+        pointer-events: none;
+      }
+
+      .pet {
+        z-index: 2;
+        display: grid;
+        width: 74px;
+        height: 74px;
+        place-items: center;
+        border: 3px solid rgba(255, 255, 255, 0.92);
+        border-radius: 26px;
+        background: rgba(255, 255, 255, 0.82);
+        box-shadow: 0 14px 26px rgba(73, 160, 220, 0.16);
+        font-size: 38px;
+      }
+
+      .pet small {
+        position: absolute;
+        right: -4px;
+        bottom: -5px;
+        padding: 4px 7px;
+        border-radius: 999px;
+        background: #e3f5ff;
+        color: #168dff;
+        font-size: 10px;
+        font-weight: 900;
+      }
+
+      .a .screen {
+        background: linear-gradient(180deg, #dff5ff, #f8fdff);
+      }
+
+      .a .hero,
+      .a .section {
+        border: 1px solid rgba(70, 166, 230, 0.2);
+        background: rgba(255, 255, 255, 0.82);
+        box-shadow: 0 16px 36px rgba(67, 166, 230, 0.12);
+      }
+
+      .a .thumb {
+        background: #dff4ff;
+      }
+
+      .a .bubble {
+        top: 20px;
+        right: 20px;
+        width: 58px;
+        height: 58px;
+        border-radius: 50%;
+        background: #cfedff;
+        box-shadow:
+          -26px 32px 0 -12px #bce5ff,
+          12px 58px 0 -18px #f4d6ec;
+      }
+
+      .a .pet {
+        top: 22px;
+        right: 18px;
+        border-radius: 50% 46% 54% 48%;
+        background: #d8f1ff;
+        transform: rotate(5deg);
+      }
+
+      .a .tabs {
+        background: rgba(245, 252, 255, 0.84);
+      }
+
+      .b .screen {
+        background: #e9f7ff;
+      }
+
+      .b .hero,
+      .b .section {
+        border: 2px solid #9ad8ff;
+        background:
+          linear-gradient(#ffffff, #ffffff) padding-box,
+          repeating-linear-gradient(0deg, transparent 0 31px, rgba(84, 171, 230, 0.1) 32px);
+        box-shadow: 6px 6px 0 rgba(84, 171, 230, 0.14);
+      }
+
+      .b .hero,
+      .b .section,
+      .b .cta,
+      .b .thumb {
+        border-radius: 14px;
+      }
+
+      .b .tape {
+        top: 14px;
+        right: 28px;
+        width: 54px;
+        height: 28px;
+        border-radius: 8px;
+        background: rgba(180, 224, 255, 0.72);
+        transform: rotate(8deg);
+      }
+
+      .b .pet {
+        top: 18px;
+        right: 26px;
+        width: 70px;
+        height: 70px;
+        border-radius: 18px;
+        background: #f7fcff;
+        transform: rotate(7deg);
+      }
+
+      .b .thumb {
+        background: #d9f0ff;
+      }
+
+      .b .tabs {
+        background: rgba(239, 249, 255, 0.9);
+      }
+
+      .c .screen {
+        background:
+          radial-gradient(circle at 20% 10%, rgba(255, 211, 234, 0.52), transparent 150px),
+          linear-gradient(180deg, #dff5ff, #fffafd);
+      }
+
+      .c .hero {
+        border: 1px solid rgba(71, 170, 238, 0.18);
+        background: linear-gradient(180deg, #ffffff, #edf9ff);
+        box-shadow: 0 16px 38px rgba(91, 177, 235, 0.16);
+      }
+
+      .c .section {
+        background: rgba(255, 255, 255, 0.72);
+        box-shadow: 0 14px 34px rgba(100, 178, 230, 0.1);
+      }
+
+      .c .cloud {
+        top: 34px;
+        right: 18px;
+        width: 78px;
+        height: 34px;
+        border-radius: 999px;
+        background: #ffffff;
+        box-shadow:
+          -20px 8px 0 -5px #ffffff,
+          22px 8px 0 -8px #ffffff,
+          0 12px 20px rgba(61, 150, 220, 0.1);
+      }
+
+      .c .pet {
+        top: 24px;
+        right: 20px;
+        background: #fff7fb;
+        border-radius: 30px;
+      }
+
+      .c .thumb {
+        background: #e5f6ff;
+      }
+
+      .c .tabs {
+        background: rgba(255, 250, 253, 0.86);
+      }
+
+      .d .screen {
+        background: linear-gradient(180deg, #e3f5ff, #f4fbff);
+      }
+
+      .d .hero,
+      .d .section {
+        border: 1px solid rgba(73, 160, 220, 0.22);
+        background: rgba(255, 255, 255, 0.84);
+      }
+
+      .d .drop {
+        top: 30px;
+        right: 34px;
+        width: 64px;
+        height: 64px;
+        border-radius: 52% 48% 58% 42%;
+        background: #bfeaff;
+        transform: rotate(18deg);
+      }
+
+      .d .pet {
+        top: 22px;
+        right: 24px;
+        background: #cfefff;
+        border-radius: 50%;
+        transform: rotate(-8deg);
+      }
+
+      .d .thumb {
+        border: 2px solid #ffffff;
+        background: #cfefff;
+        box-shadow: 0 7px 16px rgba(66, 160, 225, 0.16);
+      }
+
+      .d .tabs {
+        background: rgba(240, 250, 255, 0.88);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="board">
+      <div class="board-title">
+        <div>
+          <h1>贴贴日记 · 可爱蓝少按键方案</h1>
+          <p>只做风格选择，不新增功能。每版首屏都保持 1 个主按钮 + 1 个文字入口，小动物只做点缀。</p>
+        </div>
+        <div class="principle">
+          <span>少按键</span>
+          <span>蓝色调</span>
+          <span>可爱但不幼稚</span>
+          <span>小动物陪伴感</span>
+        </div>
+      </div>
+
+      <section class="options">
+        <article class="option">
+          <div class="option-head">
+            <strong>A. 奶蓝海豹</strong>
+            <p>圆润、干净、最像现在的自然升级版。小海豹做陪伴点缀，可爱但不抢内容。</p>
+            <div class="tags"><span>推荐</span><span>最稳</span><span>陪伴感</span></div>
+          </div>
+          <div class="phone a">
+            <div class="screen">
+              <div class="hero">
+                <i class="bubble"></i>
+                <span class="pet">🦭<small>贴贴</small></span>
+                <div class="eyebrow">2026-05-18</div>
+                <h2>贴贴日记</h2>
+                <p>拍一张照片，写一点今天。</p>
+                <button class="cta">拍一张，开始记录</button>
+                <span class="quiet-link">从相册选</span>
+              </div>
+              <div class="section">
+                <div class="section-title"><strong>继续草稿</strong><span>1 篇未完成</span></div>
+                <div class="row"><div class="thumb">草稿</div><div><strong>2026-05-11</strong><p>等联网后继续生成这篇小日记。</p><span>0 张贴纸 · 平静</span></div></div>
+              </div>
+              <div class="section">
+                <div class="section-title"><strong>最近记录</strong><span>1 篇完成</span></div>
+                <div class="row"><div class="thumb">开心</div><div><strong>2026-05-11 · 开心</strong><p>今天快乐被一杯奶茶稳稳接住了。</p><span>#美食 #自我照顾</span></div></div>
+              </div>
+              <nav class="tabs"><div class="active">✦<br />记录</div><div>▤<br />时间线</div><div>□<br />日历</div><div>♡<br />心情</div><div>⚙<br />设置</div></nav>
+            </div>
+          </div>
+        </article>
+
+        <article class="option">
+          <div class="option-head">
+            <strong>B. 晴空小猫</strong>
+            <p>更“贴贴日记”一点，有纸张、胶带和小猫角标，但按钮依旧少。</p>
+            <div class="tags"><span>手账感</span><span>小猫角标</span><span>有记忆点</span></div>
+          </div>
+          <div class="phone b">
+            <div class="screen">
+              <div class="hero">
+                <i class="tape"></i>
+                <span class="pet">🐱<small>喵</small></span>
+                <div class="eyebrow">2026-05-18</div>
+                <h2>贴贴日记</h2>
+                <p>今天也可以只写一句话。</p>
+                <button class="cta">拍一张，开始记录</button>
+                <span class="quiet-link">从相册选</span>
+              </div>
+              <div class="section">
+                <div class="section-title"><strong>继续草稿</strong><span>1 篇未完成</span></div>
+                <div class="row"><div class="thumb">草稿</div><div><strong>2026-05-11</strong><p>等联网后继续生成这篇小日记。</p><span>0 张贴纸 · 平静</span></div></div>
+              </div>
+              <div class="section">
+                <div class="section-title"><strong>最近记录</strong><span>1 篇完成</span></div>
+                <div class="row"><div class="thumb">开心</div><div><strong>2026-05-11 · 开心</strong><p>杯身上还挂着一点水珠。</p><span>#美食 #自我照顾</span></div></div>
+              </div>
+              <nav class="tabs"><div class="active">✦<br />记录</div><div>▤<br />时间线</div><div>□<br />日历</div><div>♡<br />心情</div><div>⚙<br />设置</div></nav>
+            </div>
+          </div>
+        </article>
+
+        <article class="option">
+          <div class="option-head">
+            <strong>C. 云朵小兔</strong>
+            <p>最软萌，蓝色里加一点粉。小兔像贴纸一样陪在标题旁，但不会把按钮做多。</p>
+            <div class="tags"><span>最可爱</span><span>治愈</span><span>软萌</span></div>
+          </div>
+          <div class="phone c">
+            <div class="screen">
+              <div class="hero">
+                <i class="cloud"></i>
+                <span class="pet">🐰<small>软软</small></span>
+                <div class="eyebrow">2026-05-18</div>
+                <h2>贴贴日记</h2>
+                <p>把今天轻轻贴进日记里。</p>
+                <button class="cta">拍一张，开始记录</button>
+                <span class="quiet-link">从相册选</span>
+              </div>
+              <div class="section">
+                <div class="section-title"><strong>继续草稿</strong><span>1 篇未完成</span></div>
+                <div class="row"><div class="thumb">草稿</div><div><strong>2026-05-11</strong><p>等联网后继续生成这篇小日记。</p><span>0 张贴纸 · 平静</span></div></div>
+              </div>
+              <div class="section">
+                <div class="section-title"><strong>最近记录</strong><span>1 篇完成</span></div>
+                <div class="row"><div class="thumb">开心</div><div><strong>2026-05-11 · 开心</strong><p>今天的小确幸被好好收起来。</p><span>#美食 #自我照顾</span></div></div>
+              </div>
+              <nav class="tabs"><div class="active">✦<br />记录</div><div>▤<br />时间线</div><div>□<br />日历</div><div>♡<br />心情</div><div>⚙<br />设置</div></nav>
+            </div>
+          </div>
+        </article>
+
+        <article class="option">
+          <div class="option-head">
+            <strong>D. 水滴小鲸</strong>
+            <p>更有品牌感，图形更活泼。小鲸鱼和水滴蓝呼应，第一眼更有识别度。</p>
+            <div class="tags"><span>品牌感</span><span>小鲸鱼</span><span>辨识度高</span></div>
+          </div>
+          <div class="phone d">
+            <div class="screen">
+              <div class="hero">
+                <i class="drop"></i>
+                <span class="pet">🐳<small>咕噜</small></span>
+                <div class="eyebrow">2026-05-18</div>
+                <h2>贴贴日记</h2>
+                <p>照片是入口，日记慢慢来。</p>
+                <button class="cta">拍一张，开始记录</button>
+                <span class="quiet-link">从相册选</span>
+              </div>
+              <div class="section">
+                <div class="section-title"><strong>继续草稿</strong><span>1 篇未完成</span></div>
+                <div class="row"><div class="thumb">草稿</div><div><strong>2026-05-11</strong><p>等联网后继续生成这篇小日记。</p><span>0 张贴纸 · 平静</span></div></div>
+              </div>
+              <div class="section">
+                <div class="section-title"><strong>最近记录</strong><span>1 篇完成</span></div>
+                <div class="row"><div class="thumb">开心</div><div><strong>2026-05-11 · 开心</strong><p>给今天贴上一枚蓝色小标签。</p><span>#美食 #自我照顾</span></div></div>
+              </div>
+              <nav class="tabs"><div class="active">✦<br />记录</div><div>▤<br />时间线</div><div>□<br />日历</div><div>♡<br />心情</div><div>⚙<br />设置</div></nav>
+            </div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

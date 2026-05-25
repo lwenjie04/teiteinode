@@ -1,0 +1,15 @@
+<view class="page">
+  <view class="card">
+    <view class="section-title">时间线<text>{{diaries.length}} 篇</text></view>
+    <view wx:for="{{diaries}}" wx:key="id" class="diary-row" data-id="{{item.id}}" bindtap="openDiary">
+      <image wx:if="{{item.photos.length}}" class="thumb" src="{{item.photos[0]}}" mode="aspectFill" />
+      <view wx:else class="thumb" />
+      <view class="row-body">
+        <view class="row-title">{{item.date}} · {{item.status === 'draft' ? '草稿' : item.mood}}</view>
+        <view class="row-copy">{{item.body || '还没写完的小日记'}}</view>
+        <button class="secondary" size="mini" data-id="{{item.id}}" catchtap="deleteDiary">删除</button>
+      </view>
+    </view>
+    <view wx:if="{{!diaries.length}}" class="copy">还没有日记，从记录页开始写第一篇。</view>
+  </view>
+</view>

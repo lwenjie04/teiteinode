@@ -1,0 +1,11 @@
+{
+  "name": "@tietie/mp-wechat",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "node ./scripts/verify.js",
+    "typecheck": "node ./scripts/verify.js",
+    "lint": "node ./scripts/verify.js"
+  }
+}

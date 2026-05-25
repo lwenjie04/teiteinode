@@ -1,0 +1,34 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/timeline/timeline",
+    "pages/editor/editor",
+    "pages/settings/settings"
+  ],
+  "window": {
+    "navigationBarTitleText": "贴贴日记",
+    "navigationBarBackgroundColor": "#fff8df",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#fff8df"
+  },
+  "tabBar": {
+    "color": "#667789",
+    "selectedColor": "#1f5f91",
+    "backgroundColor": "#fffcef",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "记录"
+      },
+      {
+        "pagePath": "pages/timeline/timeline",
+        "text": "时间线"
+      },
+      {
+        "pagePath": "pages/settings/settings",
+        "text": "设置"
+      }
+    ]
+  }
+}

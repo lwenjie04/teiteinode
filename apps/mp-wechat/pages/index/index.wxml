@@ -1,0 +1,36 @@
+<view class="page">
+  <view class="card">
+    <text class="eyebrow">{{today}}</text>
+    <view class="title">贴贴日记</view>
+    <view class="copy">拍一张照片，或从相册挑几张，开始写今天的小日记。</view>
+    <view class="actions">
+      <button class="primary" bindtap="choosePhoto">拍照/相册</button>
+      <button class="secondary" bindtap="startBlank">空白草稿</button>
+    </view>
+  </view>
+
+  <view wx:if="{{drafts.length}}" class="card">
+    <view class="section-title">继续草稿<text>{{drafts.length}} 篇</text></view>
+    <view wx:for="{{drafts}}" wx:key="id" class="diary-row" data-id="{{item.id}}" bindtap="openDraft">
+      <image wx:if="{{item.photos.length}}" class="thumb" src="{{item.photos[0]}}" mode="aspectFill" />
+      <view wx:else class="thumb" />
+      <view class="row-body">
+        <view class="row-title">{{item.date}} · {{item.mood}}</view>
+        <view class="row-copy">{{item.body || '还没有写正文，点这里继续补上。'}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">最近记录<text bindtap="openTimeline">全部</text></view>
+    <view wx:if="{{latest}}" class="diary-row" data-id="{{latest.id}}" bindtap="openTimeline">
+      <image wx:if="{{latest.photos.length}}" class="thumb" src="{{latest.photos[0]}}" mode="aspectFill" />
+      <view wx:else class="thumb" />
+      <view class="row-body">
+        <view class="row-title">{{latest.date}} · {{latest.mood}}</view>
+        <view class="row-copy">{{latest.body || '这篇日记还没有正文。'}}</view>
+      </view>
+    </view>
+    <view wx:else class="copy">还没有完成的日记。</view>
+  </view>
+</view>

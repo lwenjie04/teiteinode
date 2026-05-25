@@ -1,0 +1,30 @@
+{
+  "name": "tietie-diary",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm --workspace @tietie/shared run build && npm-run-all --parallel dev:web dev:api",
+    "dev:web": "npm --workspace @tietie/web run dev",
+    "dev:api": "npm --workspace @tietie/api run dev",
+    "build": "npm --workspace @tietie/shared run build && npm --workspace @tietie/api run build && npm --workspace @tietie/web run build",
+    "build:web": "npm --workspace @tietie/web run build",
+    "build:pwa": "npm --workspace @tietie/web run build",
+    "build:android": "npm --workspace @tietie/android run build",
+    "build:mp-wechat": "npm --workspace @tietie/mp-wechat run build",
+    "build:clients": "npm run build:web && npm run build:pwa && npm run build:android && npm run build:mp-wechat",
+    "typecheck": "npm --workspace @tietie/shared run build && npm --workspaces run typecheck",
+    "lint": "npm --workspaces run lint",
+    "deploy:config": "docker compose -p tietie --env-file deploy/.env -f docker-compose.prod.yml config",
+    "deploy:up": "docker compose -p tietie --env-file deploy/.env -f docker-compose.prod.yml up -d --build",
+    "deploy:logs": "docker compose -p tietie --env-file deploy/.env -f docker-compose.prod.yml logs -f api",
+    "deploy:down": "docker compose -p tietie --env-file deploy/.env -f docker-compose.prod.yml down"
+  },
+  "devDependencies": {
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.8.3"
+  }
+}

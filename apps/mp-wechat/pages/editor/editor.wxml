@@ -1,0 +1,132 @@
+<view class="page">
+  <view class="card" wx:if="{{diary}}">
+    <view class="section-title">编辑日记<text>{{diary.date}}</text></view>
+    <scroll-view wx:if="{{diary.photos.length}}" scroll-x class="photo-strip">
+      <image
+        wx:for="{{diary.photos}}"
+        wx:for-index="index"
+        wx:key="*this"
+        src="{{item}}"
+        mode="aspectFill"
+        class="thumb {{selectedPhotoIndex === index ? 'thumb-active' : ''}}"
+        data-index="{{index}}"
+        bindtap="selectPhoto"
+      />
+    </scroll-view>
+    <view class="actions compact-actions">
+      <button class="secondary" bindtap="choosePhoto">添加照片</button>
+      <button class="secondary" disabled="{{processingSticker || !diary.photos.length}}" bindtap="generateSticker">生成贴纸</button>
+    </view>
+
+    <view class="setting-grid">
+      <picker mode="selector" range="{{stickerVariants}}" value="{{stickerVariantIndex}}" bindchange="onStickerVariantChange">
+        <view class="setting-pill">贴纸：{{stickerVariants[stickerVariantIndex]}}</view>
+      </picker>
+      <picker mode="selector" range="{{selectionPresets}}" range-key="name" value="{{selectionPresetIndex}}" bindchange="onSelectionPresetChange">
+        <view class="setting-pill">主体：{{selectionPresets[selectionPresetIndex].name}}</view>
+      </picker>
+    </view>
+
+    <view wx:if="{{selectedPhotoUrl}}" class="subject-card">
+      <view class="section-title small-title">主体选择<text>{{customSelectionEnabled ? (subjectSelection.mode === 'box' ? '已框选' : '已点选') : '使用预设'}}</text></view>
+      <view class="setting-grid tight-grid">
+        <picker mode="selector" range="{{selectionModes}}" value="{{selectionModeIndex}}" bindchange="onSelectionModeChange">
+          <view class="setting-pill">方式：{{selectionModes[selectionModeIndex]}}</view>
+        </picker>
+        <view class="setting-pill">{{subjectSelection.mode === 'box' ? '拖动框选区域' : '点一下主体'}}</view>
+      </view>
+      <view
+        id="subjectPreviewWrap"
+        class="subject-preview-wrap"
+        bindtouchstart="startSubjectSelection"
+        catchtouchmove="moveSubjectSelection"
+        bindtouchend="endSubjectSelection"
+      >
+        <image class="subject-preview" src="{{selectedPhotoUrl}}" mode="aspectFill" />
+        <view class="subject-mask" />
+        <view wx:if="{{subjectSelection.mode === 'point'}}" class="subject-point" style="{{subjectPointStyle}}">
+          <view class="subject-ring" />
+        </view>
+        <view wx:elif="{{subjectSelection.mode === 'box'}}" class="subject-box" style="{{subjectBoxStyle}}" />
+      </view>
+      <view class="hint">点选模式适合单个主体；框选模式适合奶茶、餐盘、票根这类占画面一块区域的物品。</view>
+    </view>
+
+    <view wx:if="{{hasStickers}}" class="board-card">
+      <view class="section-title small-title">贴纸画布<text>{{selectedStickerText}}</text></view>
+      <view id="stickerBoard" class="sticker-board">
+        <image
+          wx:for="{{stickerItems}}"
+          wx:key="id"
+          class="board-sticker {{selectedStickerId === item.id ? 'board-sticker-active' : ''}}"
+          src="{{item.fileUrl}}"
+          mode="aspectFit"
+          style="{{item.boardStyle}}"
+          data-id="{{item.id}}"
+          bindtap="selectSticker"
+          catchtouchstart="startStickerDrag"
+          catchtouchmove="moveStickerDrag"
+          catchtouchend="endStickerDrag"
+        />
+      </view>
+      <view class="hint">按住贴纸可以直接拖动；下面的按钮用于细调。</view>
+      <view class="control-grid">
+        <button class="secondary compact-button" data-dx="-6" data-dy="0" bindtap="nudgeSticker">左移</button>
+        <button class="secondary compact-button" data-dx="6" data-dy="0" bindtap="nudgeSticker">右移</button>
+        <button class="secondary compact-button" data-dx="0" data-dy="-6" bindtap="nudgeSticker">上移</button>
+        <button class="secondary compact-button" data-dx="0" data-dy="6" bindtap="nudgeSticker">下移</button>
+        <button class="secondary compact-button" data-delta="-0.1" bindtap="scaleSticker">缩小</button>
+        <button class="secondary compact-button" data-delta="0.1" bindtap="scaleSticker">放大</button>
+        <button class="secondary compact-button" data-delta="-8" bindtap="rotateSticker">左转</button>
+        <button class="secondary compact-button" data-delta="8" bindtap="rotateSticker">右转</button>
+      </view>
+      <view class="actions compact-actions">
+        <button class="secondary" bindtap="bringStickerForward">置顶</button>
+        <button class="secondary danger-button" bindtap="removeSticker">删除贴纸</button>
+      </view>
+    </view>
+
+    <view class="export-card">
+      <view class="section-title small-title">卡片图片<text>{{exportingCard ? '生成中' : '本地导出'}}</text></view>
+      <view wx:if="{{cardImagePath}}" class="card-preview-wrap">
+        <image class="card-preview" src="{{cardImagePath}}" mode="aspectFit" />
+      </view>
+      <view class="actions compact-actions">
+        <button class="primary" disabled="{{exportingCard}}" bindtap="exportCardImage">生成卡片</button>
+        <button class="secondary" disabled="{{!cardImagePath}}" bindtap="saveCardToAlbum">保存相册</button>
+      </view>
+      <view class="hint">卡片会合成日期、正文和贴纸排版，适合保存或分享。</view>
+    </view>
+
+    <view class="ai-panel">
+      <view class="section-title small-title">AI 辅助<text>{{generatingDiary || processingSticker ? '处理中' : '可用'}}</text></view>
+      <view class="setting-grid">
+        <picker mode="selector" range="{{writingStyles}}" value="{{writingStyleIndex}}" bindchange="onWritingStyleChange">
+          <view class="setting-pill">风格：{{writingStyles[writingStyleIndex]}}</view>
+        </picker>
+        <picker mode="selector" range="{{diaryLengths}}" value="{{diaryLengthIndex}}" bindchange="onDiaryLengthChange">
+          <view class="setting-pill">长度：{{diaryLengths[diaryLengthIndex]}}</view>
+        </picker>
+      </view>
+      <button class="primary full-button" disabled="{{generatingDiary}}" bindtap="generateDiary">根据照片和标签写一段</button>
+      <view wx:if="{{aiMessage}}" class="ai-message">{{aiMessage}}</view>
+    </view>
+
+    <label class="field">心情</label>
+    <picker mode="selector" range="{{moods}}" value="{{moodIndex}}" bindchange="onMoodChange">
+      <view class="select">{{moods[moodIndex]}}</view>
+    </picker>
+
+    <label class="field">标签</label>
+    <input class="input" value="{{tagsText}}" bindinput="onTagsInput" placeholder="美食 朋友 自我照顾" />
+
+    <label class="field">正文</label>
+    <textarea class="textarea" value="{{body}}" bindinput="onBodyInput" placeholder="今天发生了什么？" />
+
+    <view class="actions">
+      <button class="secondary" bindtap="saveDraft">保存草稿</button>
+      <button class="primary" bindtap="finishDiary">完成</button>
+    </view>
+    <canvas canvas-id="diaryCardCanvas" class="export-canvas"></canvas>
+  </view>
+</view>

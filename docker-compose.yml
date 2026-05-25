@@ -1,0 +1,31 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tietie
+      POSTGRES_PASSWORD: tietie_dev
+      POSTGRES_DB: tietie_diary
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    env_file:
+      - apps/api/.env.example
+    environment:
+      DATABASE_URL: postgres://tietie:tietie_dev@postgres:5432/tietie_diary
+      STORAGE_DIR: /app/storage
+    ports:
+      - "4000:4000"
+    volumes:
+      - api-storage:/app/storage
+    depends_on:
+      - postgres
+
+volumes:
+  postgres-data:
+  api-storage:

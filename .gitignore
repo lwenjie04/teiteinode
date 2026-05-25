@@ -1,0 +1,13 @@
+node_modules
+dist
+.codegraph
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+!deploy/.env.example
+storage
+coverage
+docs/screenshots/*-profile*/
+.DS_Store
+*.log

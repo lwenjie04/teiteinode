@@ -1,0 +1,20 @@
+{$SITE_DOMAIN:localhost} {
+  encode zstd gzip
+
+  @legacyUploads path_regexp legacyUploads ^/assets/\d{4}-\d{2}-\d{2}/
+  handle @legacyUploads {
+    reverse_proxy api:4000
+  }
+
+  handle /api/* {
+    reverse_proxy api:4000
+  }
+
+  handle /uploads/* {
+    reverse_proxy api:4000
+  }
+
+  handle {
+    reverse_proxy web:80
+  }
+}
