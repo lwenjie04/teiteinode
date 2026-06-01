@@ -369,6 +369,7 @@ function localVariantFilter(variant: StickerVariant) {
     白边贴纸: "saturate(1.08) contrast(1.04)",
     旅行插画版: "saturate(1.35) contrast(1.22) brightness(1.08)",
     可爱漫画版: "saturate(1.65) contrast(1.22) brightness(1.06)",
+    像素风格: "saturate(1.35) contrast(1.18) brightness(1.05)",
     手绘插画版: "sepia(0.18) saturate(1.25) contrast(0.95) brightness(1.08)",
     黑白线稿版: "grayscale(1) contrast(1.75) brightness(1.12)"
   };
@@ -388,6 +389,14 @@ function drawLocalVariantDecoration(context: CanvasRenderingContext2D, width: nu
     context.save();
     context.globalCompositeOperation = "source-atop";
     context.fillStyle = "rgba(255, 207, 86, 0.12)";
+    context.fillRect(0, 0, width, height);
+    context.restore();
+  }
+
+  if (variant === "像素风格") {
+    context.save();
+    context.globalCompositeOperation = "source-atop";
+    context.fillStyle = "rgba(112, 191, 255, 0.12)";
     context.fillRect(0, 0, width, height);
     context.restore();
   }
@@ -430,7 +439,21 @@ async function createLocalVariantSticker(sourceUrl: string, variant: StickerVari
   const styledContext = styledImage.getContext("2d");
   if (!styledContext) throw new Error("画布创建失败");
   styledContext.filter = localVariantFilter(variant);
-  styledContext.drawImage(image, 0, 0, imageWidth, imageHeight);
+  if (variant === "像素风格") {
+    const pixelCanvas = document.createElement("canvas");
+    const pixelSide = Math.max(24, Math.round(Math.max(imageWidth, imageHeight) / 14));
+    pixelCanvas.width = Math.max(1, Math.round((imageWidth / Math.max(imageWidth, imageHeight)) * pixelSide));
+    pixelCanvas.height = Math.max(1, Math.round((imageHeight / Math.max(imageWidth, imageHeight)) * pixelSide));
+    const pixelContext = pixelCanvas.getContext("2d");
+    if (!pixelContext) throw new Error("画布创建失败");
+    pixelContext.imageSmoothingEnabled = false;
+    pixelContext.drawImage(image, 0, 0, pixelCanvas.width, pixelCanvas.height);
+    styledContext.imageSmoothingEnabled = false;
+    styledContext.drawImage(pixelCanvas, 0, 0, imageWidth, imageHeight);
+    styledContext.imageSmoothingEnabled = true;
+  } else {
+    styledContext.drawImage(image, 0, 0, imageWidth, imageHeight);
+  }
   styledContext.filter = "none";
   drawLocalVariantDecoration(styledContext, imageWidth, imageHeight, variant);
 
@@ -442,7 +465,7 @@ async function createLocalVariantSticker(sourceUrl: string, variant: StickerVari
 
   drawStickerSilhouette(context, styledImage, padding);
 
-  if (variant === "旅行插画版" || variant === "可爱漫画版" || variant === "黑白线稿版") {
+  if (variant === "旅行插画版" || variant === "像素风格" || variant === "可爱漫画版" || variant === "黑白线稿版") {
     context.save();
     context.globalCompositeOperation = "source-atop";
     context.strokeStyle = variant === "黑白线稿版" ? "rgba(0, 0, 0, 0.34)" : "rgba(24, 50, 72, 0.28)";
@@ -864,13 +887,14 @@ async function endDecorationDrag() {
 async function setVariant(variant: StickerVariant) {
   if (!diary.value || !selectedSticker.value || isBusy.value) return;
   const stickerId = selectedSticker.value.id;
-  const sourceUrl = selectedSticker.value.originalFileUrl ?? selectedSticker.value.fileUrl;
+  const selection = selectedSticker.value.selection;
+  const sourceUrl = selection ? selectedSticker.value.sourceImageUrl ?? selectedSticker.value.originalFileUrl ?? selectedSticker.value.fileUrl : selectedSticker.value.originalFileUrl ?? selectedSticker.value.fileUrl;
   await store.updateSticker(diary.value.id, stickerId, { variant, status: "processing", errorMessage: undefined });
   try {
     let nextUrl = "";
     let message = "";
     if (auth.token) {
-      const result = await stylizeSticker(auth.token, { imageUrl: sourceUrl, variant });
+      const result = await stylizeSticker(auth.token, { imageUrl: sourceUrl, variant, selection });
       nextUrl = result.stickerUrl;
       message = result.message;
     } else {

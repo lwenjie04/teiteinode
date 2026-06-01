@@ -29,7 +29,8 @@ const segmentSchema = z.object({
 
 const stylizeSchema = z.object({
   imageUrl: z.string().min(1),
-  variant: z.enum(["原始抠图", "白边贴纸", "旅行插画版", "可爱漫画版", "手绘插画版", "黑白线稿版"])
+  variant: z.enum(["原始抠图", "白边贴纸", "旅行插画版", "像素风格", "可爱漫画版", "手绘插画版", "黑白线稿版"]),
+  selection: selectionSchema.optional()
 });
 
 const generateDiarySchema = z.object({
@@ -342,13 +343,19 @@ async function saveGeneratedSticker(buffer: Buffer) {
   return `${config.PUBLIC_BASE_URL.replace(/\/$/, "")}/uploads/generated/${dateFolder}/${filename}`;
 }
 
-async function createLocalSelectionStickerUrl(sourceUrl: string, selection: SubjectSelection) {
+async function createCutoutSubjectPng(sourceUrl: string, selection?: SubjectSelection) {
   const source = await imageUrlToBuffer(sourceUrl);
-  const metadata = await sharp(source).rotate().metadata();
+  const sourceImage = sharp(source).rotate();
+  const metadata = await sourceImage.metadata();
   if (!metadata.width || !metadata.height) throw new Error("Image metadata missing");
+
+  if (!selection) {
+    return sourceImage.resize({ width: 900, height: 900, fit: "inside", withoutEnlargement: true }).ensureAlpha().png().toBuffer();
+  }
+
   const crop = normalizeCrop(selection);
-  const left = Math.round((crop.x / 100) * metadata.width);
-  const top = Math.round((crop.y / 100) * metadata.height);
+  const left = Math.min(metadata.width - 1, Math.max(0, Math.round((crop.x / 100) * metadata.width)));
+  const top = Math.min(metadata.height - 1, Math.max(0, Math.round((crop.y / 100) * metadata.height)));
   const width = Math.max(1, Math.min(metadata.width - left, Math.round((crop.width / 100) * metadata.width)));
   const height = Math.max(1, Math.min(metadata.height - top, Math.round((crop.height / 100) * metadata.height)));
   const maxSide = 900;
@@ -367,7 +374,7 @@ async function createLocalSelectionStickerUrl(sourceUrl: string, selection: Subj
     .toBuffer({ resolveWithObject: true });
 
   removeConnectedBorderBackground(raw.data, raw.info.width, raw.info.height);
-  const subject = await sharp(raw.data, {
+  return sharp(raw.data, {
     raw: {
       width: raw.info.width,
       height: raw.info.height,
@@ -376,23 +383,47 @@ async function createLocalSelectionStickerUrl(sourceUrl: string, selection: Subj
   })
     .png()
     .toBuffer();
+}
+
+async function createLocalSelectionStickerUrl(sourceUrl: string, selection: SubjectSelection) {
+  const subject = await createCutoutSubjectPng(sourceUrl, selection);
   const sticker = await composeStickerPng(subject);
   return saveGeneratedSticker(sticker);
 }
 
-async function createLocalVariantStickerUrl(sourceUrl: string, variant: StickerVariant) {
-  if (variant === "原始抠图") return sourceUrl;
-  const source = await imageUrlToBuffer(sourceUrl);
-  let image = sharp(source).rotate().resize({ width: 900, height: 900, fit: "inside", withoutEnlargement: true }).ensureAlpha();
+async function applyStickerStyle(subjectPng: Buffer, variant: StickerVariant) {
+  let image = sharp(subjectPng).ensureAlpha();
+  if (variant === "像素风格") {
+    const metadata = await sharp(subjectPng).metadata();
+    const maxSide = Math.max(metadata.width ?? 1, metadata.height ?? 1);
+    const pixelSide = Math.max(24, Math.round(maxSide / 14));
+    return image
+      .resize({ width: pixelSide, height: pixelSide, fit: "inside", kernel: sharp.kernel.nearest })
+      .resize({ width: metadata.width, height: metadata.height, fit: "contain", kernel: sharp.kernel.nearest, background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .modulate({ saturation: 1.35, brightness: 1.05 })
+      .png()
+      .toBuffer();
+  }
 
   if (variant === "旅行插画版") image = image.modulate({ saturation: 1.35, brightness: 1.08 }).linear(1.12, -10).tint("#d7f0ff");
   if (variant === "可爱漫画版") image = image.modulate({ saturation: 1.55, brightness: 1.06 }).linear(1.18, -12);
   if (variant === "手绘插画版") image = image.modulate({ saturation: 1.18, brightness: 1.08 }).tint("#fff1cf");
   if (variant === "黑白线稿版") image = image.grayscale().linear(1.65, -18);
   if (variant === "白边贴纸") image = image.modulate({ saturation: 1.08 }).linear(1.04, -4);
+  return image.png().toBuffer();
+}
 
-  const subject = await image.png().toBuffer();
-  const sticker = await composeStickerPng(subject, variant === "旅行插画版" || variant === "白边贴纸" ? 58 : 42);
+function getVariantPadding(variant: StickerVariant) {
+  if (variant === "旅行插画版" || variant === "白边贴纸") return 58;
+  if (variant === "像素风格") return 48;
+  return 42;
+}
+
+async function createLocalVariantStickerUrl(sourceUrl: string, variant: StickerVariant, selection?: SubjectSelection) {
+  if (variant === "原始抠图" && !selection) return sourceUrl;
+  const subject = await createCutoutSubjectPng(sourceUrl, selection);
+  const styledSubject = variant === "原始抠图" ? subject : await applyStickerStyle(subject, variant);
+  const sticker = await composeStickerPng(styledSubject, getVariantPadding(variant));
   return saveGeneratedSticker(sticker);
 }
 
@@ -401,6 +432,7 @@ function buildStickerEditPrompt(variant: StickerVariant) {
     原始抠图: "cut out the main subject cleanly, preserve the original photographic look",
     白边贴纸: "make a clean die-cut sticker with a thick white border and soft drop shadow",
     旅行插画版: "redraw the main subject as a travel journal illustration sticker, clean black line art, soft flat colors, thick white border, subtle shadow, like a souvenir sticker",
+    像素风格: "redraw the main subject as a cute pixel art sticker, blocky low-resolution pixels, crisp edges, bright game-like colors, thick white border",
     可爱漫画版: "redraw the main subject as a cute comic sticker, bold outline, playful colors, thick white border, subtle shadow",
     手绘插画版: "redraw the main subject as a hand-drawn editorial illustration sticker, gentle textured lines, soft colors, thick white border",
     黑白线稿版: "redraw the main subject as a black and white line-art sticker, clean ink lines, thick white border"
@@ -547,7 +579,7 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
 
     try {
       const variant = body.variant as StickerVariant;
-      const stickerUrl = await createLocalVariantStickerUrl(body.imageUrl, variant);
+      const stickerUrl = await createLocalVariantStickerUrl(body.imageUrl, variant, body.selection);
       return {
         status: "completed",
         stickerUrl,
