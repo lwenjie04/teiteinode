@@ -1,7 +1,7 @@
 page {
   min-height: 100%;
-  background: #fff8df;
-  color: #263447;
+  background: #eaf7ff;
+  color: #18324a;
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
@@ -15,7 +15,7 @@ textarea {
 
 button {
   margin: 0;
-  border-radius: 8px;
+  border-radius: 14px;
   font-weight: 800;
 }
 
@@ -26,14 +26,14 @@ button {
 .card {
   margin-bottom: 24rpx;
   padding: 28rpx;
-  border: 4rpx solid #2f6ea3;
-  border-radius: 16rpx;
-  background: #fffdf4;
-  box-shadow: 8rpx 8rpx 0 rgba(47, 110, 163, 0.16);
+  border: 2rpx solid rgba(38, 119, 176, 0.14);
+  border-radius: 28rpx;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 22rpx 48rpx rgba(24, 96, 144, 0.12);
 }
 
 .eyebrow {
-  color: #2f6ea3;
+  color: #0c6fba;
   font-size: 24rpx;
   font-weight: 900;
 }
@@ -47,7 +47,7 @@ button {
 
 .copy {
   margin-top: 14rpx;
-  color: #667789;
+  color: #5b7892;
   font-size: 28rpx;
   line-height: 1.7;
 }
@@ -63,15 +63,17 @@ button {
 .secondary {
   min-height: 84rpx;
   padding: 0 24rpx;
-  border: 4rpx solid #2f6ea3;
+  border: 2rpx solid rgba(38, 119, 176, 0.14);
 }
 
 .primary {
-  background: #ffcf56;
+  background: linear-gradient(135deg, #24a8ff, #198de8);
+  color: #ffffff;
 }
 
 .secondary {
   background: #ffffff;
+  color: #198de8;
 }
 
 .section-title {
@@ -84,7 +86,7 @@ button {
 }
 
 .section-title text {
-  color: #667789;
+  color: #5b7892;
   font-size: 24rpx;
 }
 
@@ -93,9 +95,10 @@ button {
   grid-template-columns: 132rpx 1fr;
   gap: 20rpx;
   padding: 18rpx;
-  border: 4rpx solid rgba(47, 110, 163, 0.34);
-  border-radius: 16rpx;
+  border: 2rpx solid rgba(38, 119, 176, 0.14);
+  border-radius: 24rpx;
   background: #ffffff;
+  box-shadow: 0 12rpx 28rpx rgba(24, 96, 144, 0.08);
 }
 
 .diary-row + .diary-row {
@@ -105,8 +108,8 @@ button {
 .thumb {
   width: 132rpx;
   height: 132rpx;
-  border-radius: 14rpx;
-  background: #ffcf56;
+  border-radius: 24rpx;
+  background: #fff4bf;
 }
 
 .row-body {
@@ -120,7 +123,7 @@ button {
 
 .row-copy {
   margin-top: 8rpx;
-  color: #667789;
+  color: #5b7892;
   font-size: 24rpx;
   line-height: 1.5;
 }
@@ -128,7 +131,7 @@ button {
 .field {
   display: block;
   margin-top: 20rpx;
-  color: #516070;
+  color: #5b7892;
   font-size: 26rpx;
   font-weight: 800;
 }
@@ -140,10 +143,10 @@ button {
   min-height: 84rpx;
   margin-top: 10rpx;
   padding: 18rpx;
-  border: 4rpx solid rgba(47, 110, 163, 0.44);
-  border-radius: 16rpx;
+  border: 2rpx solid rgba(38, 119, 176, 0.18);
+  border-radius: 20rpx;
   background: #ffffff;
-  color: #263447;
+  color: #18324a;
 }
 
 .textarea {

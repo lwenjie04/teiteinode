@@ -7,14 +7,14 @@
   ],
   "window": {
     "navigationBarTitleText": "贴贴日记",
-    "navigationBarBackgroundColor": "#fff8df",
+    "navigationBarBackgroundColor": "#eaf7ff",
     "navigationBarTextStyle": "black",
-    "backgroundColor": "#fff8df"
+    "backgroundColor": "#eaf7ff"
   },
   "tabBar": {
-    "color": "#667789",
-    "selectedColor": "#1f5f91",
-    "backgroundColor": "#fffcef",
+    "color": "#8aa6bb",
+    "selectedColor": "#198de8",
+    "backgroundColor": "#ffffff",
     "borderStyle": "white",
     "list": [
       {
