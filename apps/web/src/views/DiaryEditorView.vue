@@ -22,6 +22,7 @@ interface AssetLibraryItem {
 
 interface PreparedImageSource {
   url: string;
+  localUrl: string;
   uploaded: boolean;
   compressed: boolean;
   filename: string;
@@ -507,9 +508,11 @@ async function createLocalVariantSticker(sourceUrl: string, variant: StickerVari
 
 async function imageSourceFor(file: File): Promise<PreparedImageSource> {
   const prepared = await preparePhotoFile(file);
+  const localUrl = await fileToDataUrl(prepared.file);
   if (!auth.token) {
     return {
-      url: await fileToDataUrl(prepared.file),
+      url: localUrl,
+      localUrl,
       uploaded: false,
       compressed: prepared.compressed,
       filename: prepared.file.name,
@@ -521,6 +524,7 @@ async function imageSourceFor(file: File): Promise<PreparedImageSource> {
     const uploaded = await uploadImage(auth.token, prepared.file);
     return {
       url: uploaded.url,
+      localUrl,
       uploaded: true,
       compressed: prepared.compressed,
       filename: uploaded.filename,
@@ -530,7 +534,8 @@ async function imageSourceFor(file: File): Promise<PreparedImageSource> {
   } catch {
     ui.showToast("图片上传失败，已改用本地保存", "warning");
     return {
-      url: await fileToDataUrl(prepared.file),
+      url: localUrl,
+      localUrl,
       uploaded: false,
       compressed: prepared.compressed,
       filename: prepared.file.name,
@@ -541,13 +546,12 @@ async function imageSourceFor(file: File): Promise<PreparedImageSource> {
 }
 
 async function saveImageSourceLocally(source: PreparedImageSource) {
-  if (source.uploaded) return;
   await saveLocalAsset({
     id: crypto.randomUUID(),
     filename: source.filename || "photo.jpg",
     mimeType: source.mimeType || "image/jpeg",
     size: source.size,
-    url: source.url,
+    url: source.localUrl,
     createdAt: new Date().toISOString()
   });
 }
@@ -733,15 +737,15 @@ async function useAssetFromLibrary(asset: AssetLibraryItem) {
 async function replaceRepairTargetWithSource(source: PreparedImageSource) {
   if (repairingCardImage.value) {
     await saveImageSourceLocally(source);
-    return replaceCardImage(source.url);
+    return replaceCardImage(source.localUrl);
   }
   if (!diary.value || !repairTargetSticker.value) return false;
   await saveImageSourceLocally(source);
   const targetId = repairTargetSticker.value.id;
   await store.updateSticker(diary.value.id, targetId, {
-    fileUrl: source.url,
-    sourceImageUrl: source.url,
-    originalFileUrl: source.url,
+    fileUrl: source.localUrl,
+    sourceImageUrl: source.localUrl,
+    originalFileUrl: source.localUrl,
     status: "ready",
     errorMessage: undefined
   });
@@ -775,7 +779,7 @@ async function addFiles(event: Event) {
       return;
     }
     await saveImageSourceLocally(source);
-    const sticker = await store.addSticker(diary.value.id, source.url, "白边原图贴纸");
+    const sticker = await store.addSticker(diary.value.id, source.localUrl, "白边原图贴纸");
     selectedStickerId.value = sticker?.id ?? selectedStickerId.value;
   }
   input.value = "";
