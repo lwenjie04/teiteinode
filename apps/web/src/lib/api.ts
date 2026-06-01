@@ -148,7 +148,7 @@ export async function segmentSubject(token: string, payload: SegmentRequest) {
       },
       body: JSON.stringify(payload)
     },
-    10000
+    30000
   );
 }
 
@@ -163,6 +163,6 @@ export async function stylizeSticker(token: string, payload: StylizeRequest) {
       },
       body: JSON.stringify(payload)
     },
-    10000
+    30000
   );
 }

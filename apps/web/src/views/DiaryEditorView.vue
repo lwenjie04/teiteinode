@@ -588,6 +588,18 @@ function isVolatileImageUrl(url?: string) {
   return Boolean(url?.startsWith("blob:"));
 }
 
+function canSendImageUrlToBackend(url?: string) {
+  return Boolean(url && !url.startsWith("data:") && !url.startsWith("blob:"));
+}
+
+function backendImageUrlFor(sticker: Sticker, fallbackUrl: string) {
+  if (canSendImageUrlToBackend(sticker.remoteImageUrl)) return sticker.remoteImageUrl;
+  if (canSendImageUrlToBackend(sticker.sourceImageUrl)) return sticker.sourceImageUrl;
+  if (canSendImageUrlToBackend(sticker.originalFileUrl)) return sticker.originalFileUrl;
+  if (canSendImageUrlToBackend(fallbackUrl)) return fallbackUrl;
+  return "";
+}
+
 function stickerHasVolatileUrl(sticker: Sticker) {
   return [sticker.fileUrl, sticker.sourceImageUrl, sticker.originalFileUrl, sticker.remoteImageUrl].some(isVolatileImageUrl);
 }
@@ -938,12 +950,12 @@ async function setVariant(variant: StickerVariant) {
   const stickerId = selectedSticker.value.id;
   const selection = selectedSticker.value.selection;
   const localSourceUrl = selection ? selectedSticker.value.sourceImageUrl ?? selectedSticker.value.originalFileUrl ?? selectedSticker.value.fileUrl : selectedSticker.value.originalFileUrl ?? selectedSticker.value.fileUrl;
-  const remoteSourceUrl = selectedSticker.value.remoteImageUrl ?? localSourceUrl;
+  const remoteSourceUrl = backendImageUrlFor(selectedSticker.value, localSourceUrl);
   await store.updateSticker(diary.value.id, stickerId, { variant, status: "processing", errorMessage: undefined });
   try {
     let nextUrl = "";
     let message = "";
-    if (auth.token && selectedSticker.value.remoteImageUrl) {
+    if (auth.token && remoteSourceUrl) {
       const result = await stylizeSticker(auth.token, { imageUrl: remoteSourceUrl, variant, selection });
       nextUrl = result.stickerUrl;
       message = result.message;
@@ -1022,12 +1034,12 @@ async function processSubject() {
   const stickerId = selectedSticker.value.id;
   const selection = selectedSticker.value.selection;
   const localSourceUrl = selectedSticker.value.sourceImageUrl ?? selectedSticker.value.fileUrl;
-  const remoteSourceUrl = selectedSticker.value.remoteImageUrl ?? localSourceUrl;
+  const remoteSourceUrl = backendImageUrlFor(selectedSticker.value, localSourceUrl);
   await store.updateSticker(diary.value.id, stickerId, { status: "processing", errorMessage: undefined });
   try {
     let stickerUrl = "";
     let message = "";
-    if (auth.token && selectedSticker.value.remoteImageUrl) {
+    if (auth.token && remoteSourceUrl) {
       const result = await segmentSubject(auth.token, { imageUrl: remoteSourceUrl, selection });
       stickerUrl = result.stickerUrl;
       message = result.message;
