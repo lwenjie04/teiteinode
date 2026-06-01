@@ -8,8 +8,12 @@ import "./styles.css";
 
 const pinia = createPinia();
 const app = createApp(App).use(pinia).use(router);
+const settingsStore = useSettingsStore(pinia);
+const diaryStore = useDiaryStore(pinia);
 
-Promise.all([useSettingsStore(pinia).hydrate(), useDiaryStore(pinia).hydrate()]).finally(() => app.mount("#app"));
+app.mount("#app");
+
+Promise.all([settingsStore.hydrate(), diaryStore.hydrate()]).catch(() => undefined);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

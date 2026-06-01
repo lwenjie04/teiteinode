@@ -6,8 +6,8 @@
   "scope": "/",
   "lang": "zh-CN",
   "display": "standalone",
-  "background_color": "#fff8df",
-  "theme_color": "#ffcf56",
+  "background_color": "#eaf7ff",
+  "theme_color": "#198de8",
   "orientation": "portrait",
   "categories": ["lifestyle", "photo", "productivity"],
   "icons": [

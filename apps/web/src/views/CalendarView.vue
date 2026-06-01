@@ -131,7 +131,7 @@ const topMood = computed(() => {
 </script>
 
 <template>
-  <section>
+  <section class="calendar-page">
     <div class="page-title calendar-title-row">
       <div>
         <p class="eyebrow">Calendar</p>

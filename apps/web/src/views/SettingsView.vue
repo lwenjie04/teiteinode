@@ -877,7 +877,7 @@ async function requireLoginSync(action: "push" | "pull" | "both") {
 </script>
 
 <template>
-  <section>
+  <section class="settings-page">
     <input ref="importInput" class="visually-hidden" type="file" accept="application/json,.json" @change="importBackup" />
 
     <div class="page-title">

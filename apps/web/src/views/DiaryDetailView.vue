@@ -329,7 +329,7 @@ async function deleteCurrentDiary() {
 </script>
 
 <template>
-  <section v-if="diary">
+  <section v-if="diary" class="detail-page">
     <div class="page-title">
       <p class="eyebrow">{{ diary.date }}</p>
       <h1>{{ diary.status === "draft" ? "未完成草稿" : "日记详情" }}</h1>

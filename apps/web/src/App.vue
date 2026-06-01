@@ -26,11 +26,11 @@ const canManualSync = computed(() => online.value && auth.isLoggedIn && store.pe
 const canAutoSync = computed(() => canManualSync.value && Boolean(auth.token));
 
 const tabs = [
-  { name: "记录", path: "/", icon: "✦" },
-  { name: "时间线", path: "/timeline", icon: "▤" },
-  { name: "日历", path: "/calendar", icon: "□" },
-  { name: "心情", path: "/moods", icon: "♡" },
-  { name: "设置", path: "/settings", icon: "⚙" }
+  { name: "记录", path: "/", icon: "记" },
+  { name: "时间线", path: "/timeline", icon: "线" },
+  { name: "日历", path: "/calendar", icon: "月" },
+  { name: "心情", path: "/moods", icon: "心" },
+  { name: "设置", path: "/settings", icon: "设" }
 ];
 
 function clearAutoSyncTimer() {

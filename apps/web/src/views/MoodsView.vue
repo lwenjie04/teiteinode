@@ -35,7 +35,7 @@ function openMood(mood: Mood) {
 </script>
 
 <template>
-  <section>
+  <section class="moods-page">
     <div class="page-title">
       <p class="eyebrow">Mood</p>
       <h1>心情</h1>

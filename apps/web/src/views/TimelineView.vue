@@ -157,7 +157,7 @@ async function undoDelete() {
 </script>
 
 <template>
-  <section>
+  <section class="timeline-page">
     <div class="page-title timeline-title-row">
       <div>
         <p class="eyebrow">Timeline</p>
