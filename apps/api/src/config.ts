@@ -8,7 +8,9 @@ const envSchema = z.object({
   STORAGE_DIR: z.string().default("./storage"),
   PUBLIC_BASE_URL: z.string().default("http://localhost:4000"),
   AI_PROVIDER: z.string().optional(),
-  AI_API_KEY: z.string().optional()
+  AI_API_KEY: z.string().optional(),
+  AI_BASE_URL: z.string().url().default("https://api.openai.com/v1"),
+  AI_MODEL: z.string().default("gpt-4.1-mini")
 });
 
 export const config = envSchema.parse(process.env);

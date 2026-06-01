@@ -38,6 +38,78 @@ const generateDiarySchema = z.object({
   stickerCount: z.number().optional()
 });
 
+type GenerateDiaryInput = z.infer<typeof generateDiarySchema>;
+
+interface ChatCompletionResponse {
+  model?: string;
+  choices?: Array<{
+    message?: {
+      content?: string | null;
+    };
+  }>;
+}
+
+function canUseRemoteAi() {
+  if (!config.AI_PROVIDER || !config.AI_API_KEY) return false;
+  return ["openai", "openai-compatible"].includes(config.AI_PROVIDER.toLowerCase());
+}
+
+function buildRemoteDiaryPrompt(input: GenerateDiaryInput) {
+  return [
+    "You are the diary writing assistant for a Chinese photo journal app named Tietie Diary.",
+    "Write only the diary body in Simplified Chinese.",
+    "Keep it gentle, concrete, personal, and suitable for a cute journal page.",
+    "Do not invent major events or dramatic facts.",
+    `Style: ${input.writingStyle || "cute and lively"}`,
+    `Length: ${input.length || "short paragraph"}`,
+    `Location: ${input.location || "today"}`,
+    `Mood: ${input.mood || "happy"}`,
+    `Tags: ${input.tags?.length ? input.tags.join(", ") : "none"}`,
+    `Sticker count: ${input.stickerCount ?? 0}`,
+    `User note: ${input.prompt?.trim() || "record today's small moment"}`
+  ].join("\n");
+}
+
+async function generateDiaryWithChatCompletion(input: GenerateDiaryInput) {
+  const response = await fetch(`${config.AI_BASE_URL.replace(/\/$/, "")}/chat/completions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.AI_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: config.AI_MODEL,
+      messages: [
+        {
+          role: "system",
+          content: "You generate warm, realistic Simplified Chinese diary entries. Return only the diary text."
+        },
+        {
+          role: "user",
+          content: buildRemoteDiaryPrompt(input)
+        }
+      ],
+      temperature: 0.85,
+      max_tokens: 500
+    }),
+    signal: AbortSignal.timeout(15000)
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`AI request failed: ${response.status} ${detail.slice(0, 160)}`);
+  }
+
+  const data = (await response.json()) as ChatCompletionResponse;
+  const text = data.choices?.[0]?.message?.content?.trim();
+  if (!text) throw new Error("AI response did not include diary text");
+
+  return {
+    text,
+    model: data.model || config.AI_MODEL
+  };
+}
+
 function buildDiaryText(input: z.infer<typeof generateDiarySchema>) {
   const place = input.location?.trim() || "今天";
   const hint = input.prompt?.trim() || "这个小片刻";
@@ -68,8 +140,9 @@ function buildDiaryText(input: z.infer<typeof generateDiarySchema>) {
 
 export const aiRoutes: FastifyPluginAsync = async (app) => {
   app.get("/status", async () => ({
-    available: Boolean(config.AI_PROVIDER && config.AI_API_KEY),
+    available: canUseRemoteAi(),
     providerConfigured: Boolean(config.AI_PROVIDER),
+    model: config.AI_MODEL,
     message: config.AI_API_KEY ? "AI 服务已配置" : "AI 服务尚未配置 API Key"
   }));
 
@@ -96,6 +169,19 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
 
   app.post("/generate-diary", { preHandler: app.authenticate }, async (request) => {
     const body = generateDiarySchema.parse(request.body);
+
+    if (canUseRemoteAi()) {
+      try {
+        const result = await generateDiaryWithChatCompletion(body);
+        return {
+          text: result.text,
+          model: result.model,
+          policy: "轻微润色，不编造重大事件"
+        };
+      } catch (error) {
+        request.log.warn({ error }, "AI diary generation failed, falling back to local template");
+      }
+    }
 
     return {
       text: buildDiaryText(body),
