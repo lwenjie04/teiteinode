@@ -55,13 +55,40 @@ interface ImageEditResponse {
   }>;
 }
 
+interface QwenImageEditResponse {
+  output?: {
+    choices?: Array<{
+      message?: {
+        content?: Array<{
+          image?: string;
+        }>;
+      };
+    }>;
+  };
+  code?: string;
+  message?: string;
+}
+
 function canUseRemoteAi() {
   if (!config.AI_PROVIDER || !config.AI_API_KEY) return false;
   return ["openai", "openai-compatible"].includes(config.AI_PROVIDER.toLowerCase());
 }
 
+function getImageProvider() {
+  if (config.AI_IMAGE_PROVIDER) return config.AI_IMAGE_PROVIDER.toLowerCase();
+  return config.AI_PROVIDER?.toLowerCase() === "openai" ? "openai" : "";
+}
+
+function getImageApiKey() {
+  return config.AI_IMAGE_API_KEY || (getImageProvider() === "openai" ? config.AI_API_KEY : undefined);
+}
+
 function canUseOpenAiImageEdit() {
-  return config.AI_PROVIDER?.toLowerCase() === "openai" && Boolean(config.AI_API_KEY);
+  return getImageProvider() === "openai" && Boolean(getImageApiKey());
+}
+
+function canUseQwenImageEdit() {
+  return ["qwen-image-edit", "dashscope"].includes(getImageProvider()) && Boolean(getImageApiKey());
 }
 
 function buildRemoteDiaryPrompt(input: GenerateDiaryInput) {
@@ -135,6 +162,20 @@ async function imageUrlToBlob(imageUrl: string) {
   return response.blob();
 }
 
+async function blobToDataUrl(blob: Blob) {
+  const bytes = Buffer.from(await blob.arrayBuffer());
+  const mimeType = blob.type || "image/png";
+  return `data:${mimeType};base64,${bytes.toString("base64")}`;
+}
+
+async function imageUrlToQwenInput(imageUrl: string) {
+  if (imageUrl.startsWith("data:")) return imageUrl;
+  if (/^https?:\/\//i.test(imageUrl) && !/^https?:\/\/(localhost|127\.0\.0\.1|10\.0\.2\.2)(:|\/|$)/i.test(imageUrl)) {
+    return imageUrl;
+  }
+  return blobToDataUrl(await imageUrlToBlob(imageUrl));
+}
+
 function buildStickerEditPrompt(variant: StickerVariant) {
   const styleMap: Record<StickerVariant, string> = {
     原始抠图: "cut out the main subject cleanly, preserve the original photographic look",
@@ -165,10 +206,11 @@ async function stylizeStickerWithOpenAi(imageUrl: string, variant: StickerVarian
   formData.append("background", "transparent");
   formData.append("quality", "medium");
 
-  const response = await fetch(`${config.AI_BASE_URL.replace(/\/$/, "")}/images/edits`, {
+  const baseUrl = config.AI_IMAGE_BASE_URL.includes("dashscope.aliyuncs.com") ? config.AI_BASE_URL : config.AI_IMAGE_BASE_URL;
+  const response = await fetch(`${baseUrl.replace(/\/$/, "")}/images/edits`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${config.AI_API_KEY}`
+      Authorization: `Bearer ${getImageApiKey()}`
     },
     body: formData,
     signal: AbortSignal.timeout(60000)
@@ -183,6 +225,51 @@ async function stylizeStickerWithOpenAi(imageUrl: string, variant: StickerVarian
   const imageBase64 = data.data?.[0]?.b64_json;
   if (!imageBase64) throw new Error("AI image edit response did not include image data");
   return `data:image/png;base64,${imageBase64}`;
+}
+
+async function stylizeStickerWithQwen(imageUrl: string, variant: StickerVariant) {
+  const sourceImage = await imageUrlToQwenInput(imageUrl);
+  const response = await fetch(config.AI_IMAGE_BASE_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${getImageApiKey()}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: config.AI_IMAGE_MODEL,
+      input: {
+        messages: [
+          {
+            role: "user",
+            content: [
+              { image: sourceImage },
+              { text: buildStickerEditPrompt(variant) }
+            ]
+          }
+        ]
+      },
+      parameters: {
+        n: 1,
+        watermark: false,
+        prompt_extend: true,
+        negative_prompt: "low quality, blurry, messy background, watermark, extra text",
+        size: "1024*1024"
+      }
+    }),
+    signal: AbortSignal.timeout(90000)
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`Qwen image edit failed: ${response.status} ${detail.slice(0, 160)}`);
+  }
+
+  const data = (await response.json()) as QwenImageEditResponse;
+  if (data.code) throw new Error(`Qwen image edit failed: ${data.code} ${data.message || ""}`);
+
+  const generatedImage = data.output?.choices?.[0]?.message?.content?.find((item) => item.image)?.image;
+  if (!generatedImage) throw new Error("Qwen image edit response did not include image URL");
+  return generatedImage;
 }
 
 function buildDiaryText(input: z.infer<typeof generateDiarySchema>) {
@@ -218,6 +305,9 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
     available: canUseRemoteAi(),
     providerConfigured: Boolean(config.AI_PROVIDER),
     model: config.AI_MODEL,
+    imageProvider: getImageProvider() || "local",
+    imageModel: config.AI_IMAGE_MODEL,
+    imageAvailable: canUseOpenAiImageEdit() || canUseQwenImageEdit(),
     message: config.AI_API_KEY ? "AI 服务已配置" : "AI 服务尚未配置 API Key"
   }));
 
@@ -234,13 +324,16 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
   app.post("/stylize", { preHandler: app.authenticate }, async (request) => {
     const body = stylizeSchema.parse(request.body);
 
-    if (canUseOpenAiImageEdit()) {
+    if (canUseQwenImageEdit() || canUseOpenAiImageEdit()) {
       try {
-        const stickerUrl = await stylizeStickerWithOpenAi(body.imageUrl, body.variant as StickerVariant);
+        const variant = body.variant as StickerVariant;
+        const stickerUrl = canUseQwenImageEdit()
+          ? await stylizeStickerWithQwen(body.imageUrl, variant)
+          : await stylizeStickerWithOpenAi(body.imageUrl, variant);
         return {
           status: "completed",
           stickerUrl,
-          variant: body.variant as StickerVariant,
+          variant,
           message: "AI 已生成新的风格贴纸。"
         };
       } catch (error) {

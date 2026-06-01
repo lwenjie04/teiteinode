@@ -31,6 +31,9 @@ const envSchema = z.object({
   AI_API_KEY: z.string().optional(),
   AI_BASE_URL: z.string().url().default("https://api.openai.com/v1"),
   AI_MODEL: z.string().default("gpt-4.1-mini"),
+  AI_IMAGE_PROVIDER: z.string().optional(),
+  AI_IMAGE_API_KEY: z.string().optional(),
+  AI_IMAGE_BASE_URL: z.string().url().default("https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation"),
   AI_IMAGE_MODEL: z.string().default("gpt-image-1")
 });
 
