@@ -29,7 +29,7 @@ const segmentSchema = z.object({
 
 const stylizeSchema = z.object({
   imageUrl: z.string().min(1),
-  variant: z.enum(["原始抠图", "白边贴纸", "旅行插画版", "像素风格", "可爱漫画版", "手绘插画版", "黑白线稿版"]),
+  variant: z.enum(["白边原图贴纸", "旅行插画风", "像素风格", "线条手绘风", "可爱漫画风", "复古邮票风"]),
   selection: selectionSchema.optional()
 });
 
@@ -391,51 +391,81 @@ async function createLocalSelectionStickerUrl(sourceUrl: string, selection: Subj
   return saveGeneratedSticker(sticker);
 }
 
-async function applyStickerStyle(subjectPng: Buffer, variant: StickerVariant) {
-  let image = sharp(subjectPng).ensureAlpha();
-  if (variant === "像素风格") {
-    const metadata = await sharp(subjectPng).metadata();
-    const maxSide = Math.max(metadata.width ?? 1, metadata.height ?? 1);
-    const pixelSide = Math.max(24, Math.round(maxSide / 14));
-    return image
-      .resize({ width: pixelSide, height: pixelSide, fit: "inside", kernel: sharp.kernel.nearest })
-      .resize({ width: metadata.width, height: metadata.height, fit: "contain", kernel: sharp.kernel.nearest, background: { r: 0, g: 0, b: 0, alpha: 0 } })
-      .modulate({ saturation: 1.35, brightness: 1.05 })
-      .png()
-      .toBuffer();
-  }
+type StickerStyleModule = {
+  padding: number;
+  render: (subjectPng: Buffer) => Promise<Buffer>;
+};
 
-  if (variant === "旅行插画版") image = image.modulate({ saturation: 1.35, brightness: 1.08 }).linear(1.12, -10).tint("#d7f0ff");
-  if (variant === "可爱漫画版") image = image.modulate({ saturation: 1.55, brightness: 1.06 }).linear(1.18, -12);
-  if (variant === "手绘插画版") image = image.modulate({ saturation: 1.18, brightness: 1.08 }).tint("#fff1cf");
-  if (variant === "黑白线稿版") image = image.grayscale().linear(1.65, -18);
-  if (variant === "白边贴纸") image = image.modulate({ saturation: 1.08 }).linear(1.04, -4);
-  return image.png().toBuffer();
+async function renderWhitePhotoStyle(subjectPng: Buffer) {
+  return sharp(subjectPng).ensureAlpha().modulate({ saturation: 1.08 }).linear(1.04, -4).png().toBuffer();
 }
 
-function getVariantPadding(variant: StickerVariant) {
-  if (variant === "旅行插画版" || variant === "白边贴纸") return 58;
-  if (variant === "像素风格") return 48;
-  return 42;
+async function renderTravelIllustrationStyle(subjectPng: Buffer) {
+  return sharp(subjectPng).ensureAlpha().modulate({ saturation: 1.35, brightness: 1.08 }).linear(1.12, -10).tint("#d7f0ff").png().toBuffer();
 }
+
+async function renderPixelStyle(subjectPng: Buffer) {
+  const metadata = await sharp(subjectPng).metadata();
+  const maxSide = Math.max(metadata.width ?? 1, metadata.height ?? 1);
+  const pixelSide = Math.max(24, Math.round(maxSide / 14));
+  return sharp(subjectPng)
+    .ensureAlpha()
+    .resize({ width: pixelSide, height: pixelSide, fit: "inside", kernel: sharp.kernel.nearest })
+    .resize({ width: metadata.width, height: metadata.height, fit: "contain", kernel: sharp.kernel.nearest, background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .modulate({ saturation: 1.35, brightness: 1.05 })
+    .png()
+    .toBuffer();
+}
+
+async function renderLineSketchStyle(subjectPng: Buffer) {
+  return sharp(subjectPng).ensureAlpha().grayscale().linear(1.7, -24).tint("#263447").png().toBuffer();
+}
+
+async function renderCuteComicStyle(subjectPng: Buffer) {
+  return sharp(subjectPng).ensureAlpha().modulate({ saturation: 1.55, brightness: 1.06 }).linear(1.18, -12).png().toBuffer();
+}
+
+async function renderRetroStampStyle(subjectPng: Buffer) {
+  const metadata = await sharp(subjectPng).metadata();
+  const width = metadata.width ?? 1;
+  const height = metadata.height ?? 1;
+  const grain = Buffer.from(
+    `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100%" height="100%" filter="url(#n)" opacity="0.08"/></svg>`
+  );
+  return sharp(subjectPng)
+    .ensureAlpha()
+    .modulate({ saturation: 0.78, brightness: 1.08 })
+    .tint("#f3d49b")
+    .composite([{ input: grain, blend: "overlay" }])
+    .png()
+    .toBuffer();
+}
+
+const stickerStyleModules: Record<StickerVariant, StickerStyleModule> = {
+  白边原图贴纸: { padding: 58, render: renderWhitePhotoStyle },
+  旅行插画风: { padding: 58, render: renderTravelIllustrationStyle },
+  像素风格: { padding: 48, render: renderPixelStyle },
+  线条手绘风: { padding: 42, render: renderLineSketchStyle },
+  可爱漫画风: { padding: 42, render: renderCuteComicStyle },
+  复古邮票风: { padding: 62, render: renderRetroStampStyle }
+};
 
 async function createLocalVariantStickerUrl(sourceUrl: string, variant: StickerVariant, selection?: SubjectSelection) {
-  if (variant === "原始抠图" && !selection) return sourceUrl;
   const subject = await createCutoutSubjectPng(sourceUrl, selection);
-  const styledSubject = variant === "原始抠图" ? subject : await applyStickerStyle(subject, variant);
-  const sticker = await composeStickerPng(styledSubject, getVariantPadding(variant));
+  const styleModule = stickerStyleModules[variant];
+  const styledSubject = await styleModule.render(subject);
+  const sticker = await composeStickerPng(styledSubject, styleModule.padding);
   return saveGeneratedSticker(sticker);
 }
 
 function buildStickerEditPrompt(variant: StickerVariant) {
   const styleMap: Record<StickerVariant, string> = {
-    原始抠图: "cut out the main subject cleanly, preserve the original photographic look",
-    白边贴纸: "make a clean die-cut sticker with a thick white border and soft drop shadow",
-    旅行插画版: "redraw the main subject as a travel journal illustration sticker, clean black line art, soft flat colors, thick white border, subtle shadow, like a souvenir sticker",
+    白边原图贴纸: "make a clean photo die-cut sticker with a thick white border and soft drop shadow",
+    旅行插画风: "redraw the main subject as a travel journal illustration sticker, clean black line art, soft flat colors, thick white border, subtle shadow, like a souvenir sticker",
     像素风格: "redraw the main subject as a cute pixel art sticker, blocky low-resolution pixels, crisp edges, bright game-like colors, thick white border",
-    可爱漫画版: "redraw the main subject as a cute comic sticker, bold outline, playful colors, thick white border, subtle shadow",
-    手绘插画版: "redraw the main subject as a hand-drawn editorial illustration sticker, gentle textured lines, soft colors, thick white border",
-    黑白线稿版: "redraw the main subject as a black and white line-art sticker, clean ink lines, thick white border"
+    线条手绘风: "redraw the main subject as a hand-drawn line sketch sticker, clean ink lines, sparse soft fill, thick white border",
+    可爱漫画风: "redraw the main subject as a cute comic sticker, bold outline, playful colors, thick white border, subtle shadow",
+    复古邮票风: "redraw the main subject as a retro postage stamp sticker, warm paper texture, vintage colors, thick white border"
   };
 
   return [

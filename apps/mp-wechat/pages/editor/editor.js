@@ -3,7 +3,7 @@ const { defaultDiarySettings, getDiary, moods, nowIso, upsertDiary } = require("
 
 const writingStyles = ["可爱活泼", "文艺感", "吐槽幽默"];
 const diaryLengths = ["一句话", "一小段", "两三段"];
-const stickerVariants = ["原始抠图", "白边贴纸", "可爱漫画版", "手绘插画版", "黑白线稿版"];
+const stickerVariants = ["白边原图贴纸", "旅行插画风", "像素风格", "线条手绘风", "可爱漫画风", "复古邮票风"];
 const selectionModes = ["点选主体", "框选主体"];
 const selectionPresets = [
   {

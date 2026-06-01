@@ -252,7 +252,7 @@ export const useDiaryStore = defineStore("diaries", {
       this.lastDeletedAt = "";
       return restored;
     },
-    async addSticker(diaryId: string, fileUrl: string, variant: StickerVariant = "白边贴纸") {
+    async addSticker(diaryId: string, fileUrl: string, variant: StickerVariant = "白边原图贴纸") {
       const diary = this.getDiary(diaryId);
       if (!diary) return undefined;
       const sticker: Sticker = {

@@ -1,7 +1,7 @@
-const diaryKey = "tietie.diaries";
+﻿const diaryKey = "tietie.diaries";
 
 const moods = ["开心", "平静", "疲惫", "感动", "焦虑", "期待", "治愈", "生气", "孤独", "松弛"];
-const stickerVariants = ["原始抠图", "白边贴纸", "可爱漫画版", "手绘插画版", "黑白线稿版"];
+const stickerVariants = ["白边原图贴纸", "旅行插画风", "像素风格", "线条手绘风", "可爱漫画风", "复古邮票风"];
 const defaultDiarySettings = {
   writingStyle: "可爱活泼",
   length: "一小段",
@@ -34,7 +34,7 @@ function normalizeMood(mood) {
 }
 
 function normalizeVariant(variant) {
-  return stickerVariants.includes(variant) ? variant : "白边贴纸";
+  return stickerVariants.includes(variant) ? variant : "白边原图贴纸";
 }
 
 function toNumber(value, fallback) {
@@ -145,7 +145,7 @@ function toCloudDiary(diary) {
     fileUrl: url,
     sourceImageUrl: url,
     originalFileUrl: url,
-    variant: "白边贴纸",
+    variant: "白边原图贴纸",
     status: "ready",
     x: 32 + index * 18,
     y: 36 + index * 14,

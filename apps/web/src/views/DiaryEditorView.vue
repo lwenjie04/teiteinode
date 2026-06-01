@@ -365,19 +365,18 @@ async function createLocalSelectionSticker(sourceUrl: string, selection: Subject
 
 function localVariantFilter(variant: StickerVariant) {
   const filters: Record<StickerVariant, string> = {
-    原始抠图: "none",
-    白边贴纸: "saturate(1.08) contrast(1.04)",
-    旅行插画版: "saturate(1.35) contrast(1.22) brightness(1.08)",
-    可爱漫画版: "saturate(1.65) contrast(1.22) brightness(1.06)",
+    白边原图贴纸: "saturate(1.08) contrast(1.04)",
+    旅行插画风: "saturate(1.35) contrast(1.22) brightness(1.08)",
     像素风格: "saturate(1.35) contrast(1.18) brightness(1.05)",
-    手绘插画版: "sepia(0.18) saturate(1.25) contrast(0.95) brightness(1.08)",
-    黑白线稿版: "grayscale(1) contrast(1.75) brightness(1.12)"
+    线条手绘风: "grayscale(1) contrast(1.65) brightness(1.12)",
+    可爱漫画风: "saturate(1.65) contrast(1.22) brightness(1.06)",
+    复古邮票风: "sepia(0.38) saturate(0.88) contrast(1.08) brightness(1.08)"
   };
   return filters[variant];
 }
 
 function drawLocalVariantDecoration(context: CanvasRenderingContext2D, width: number, height: number, variant: StickerVariant) {
-  if (variant === "旅行插画版") {
+  if (variant === "旅行插画风") {
     context.save();
     context.globalCompositeOperation = "source-atop";
     context.fillStyle = "rgba(25, 141, 232, 0.08)";
@@ -385,7 +384,7 @@ function drawLocalVariantDecoration(context: CanvasRenderingContext2D, width: nu
     context.restore();
   }
 
-  if (variant === "可爱漫画版") {
+  if (variant === "可爱漫画风") {
     context.save();
     context.globalCompositeOperation = "source-atop";
     context.fillStyle = "rgba(255, 207, 86, 0.12)";
@@ -401,7 +400,7 @@ function drawLocalVariantDecoration(context: CanvasRenderingContext2D, width: nu
     context.restore();
   }
 
-  if (variant === "手绘插画版") {
+  if (variant === "线条手绘风") {
     context.save();
     context.globalAlpha = 0.08;
     context.strokeStyle = "#2f6ea3";
@@ -415,21 +414,23 @@ function drawLocalVariantDecoration(context: CanvasRenderingContext2D, width: nu
     context.restore();
   }
 
-  if (variant === "黑白线稿版") {
+  if (variant === "复古邮票风") {
     context.save();
-    context.globalCompositeOperation = "multiply";
-    context.strokeStyle = "rgba(38, 52, 71, 0.18)";
-    context.lineWidth = 4;
-    context.strokeRect(8, 8, width - 16, height - 16);
+    context.globalAlpha = 0.1;
+    context.fillStyle = "#7a532e";
+    for (let x = 0; x < width; x += 18) {
+      for (let y = 0; y < height; y += 18) {
+        context.fillRect(x, y, 2, 2);
+      }
+    }
     context.restore();
   }
 }
 
 async function createLocalVariantSticker(sourceUrl: string, variant: StickerVariant) {
-  if (variant === "原始抠图") return sourceUrl;
   const image = await loadImageFromUrl(sourceUrl);
   const maxSide = 900;
-  const padding = variant === "白边贴纸" || variant === "旅行插画版" ? 58 : 38;
+  const padding = variant === "白边原图贴纸" || variant === "旅行插画风" || variant === "复古邮票风" ? 58 : 38;
   const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
   const imageWidth = Math.max(1, Math.round(image.naturalWidth * scale));
   const imageHeight = Math.max(1, Math.round(image.naturalHeight * scale));
@@ -465,11 +466,11 @@ async function createLocalVariantSticker(sourceUrl: string, variant: StickerVari
 
   drawStickerSilhouette(context, styledImage, padding);
 
-  if (variant === "旅行插画版" || variant === "像素风格" || variant === "可爱漫画版" || variant === "黑白线稿版") {
+  if (variant === "旅行插画风" || variant === "像素风格" || variant === "线条手绘风" || variant === "可爱漫画风" || variant === "复古邮票风") {
     context.save();
     context.globalCompositeOperation = "source-atop";
-    context.strokeStyle = variant === "黑白线稿版" ? "rgba(0, 0, 0, 0.34)" : "rgba(24, 50, 72, 0.28)";
-    context.lineWidth = variant === "黑白线稿版" ? 4 : 6;
+    context.strokeStyle = variant === "线条手绘风" ? "rgba(0, 0, 0, 0.34)" : "rgba(24, 50, 72, 0.28)";
+    context.lineWidth = variant === "线条手绘风" ? 4 : 6;
     const gap = 18;
     for (let x = -imageHeight; x < canvas.width; x += gap) {
       context.beginPath();
@@ -660,7 +661,7 @@ async function toggleAssetLibrary() {
 
 async function addAssetSticker(asset: AssetLibraryItem) {
   if (!diary.value || isBusy.value) return;
-  const sticker = await store.addSticker(diary.value.id, asset.url, "白边贴纸");
+  const sticker = await store.addSticker(diary.value.id, asset.url, "白边原图贴纸");
   selectedStickerId.value = sticker?.id ?? selectedStickerId.value;
   selectedDecorationId.value = null;
   ui.showToast("已从素材库添加贴纸", "success");
@@ -753,7 +754,7 @@ async function addFiles(event: Event) {
       return;
     }
     await saveImageSourceLocally(source);
-    const sticker = await store.addSticker(diary.value.id, source.url, "白边贴纸");
+    const sticker = await store.addSticker(diary.value.id, source.url, "白边原图贴纸");
     selectedStickerId.value = sticker?.id ?? selectedStickerId.value;
   }
   input.value = "";
@@ -1652,7 +1653,7 @@ async function save(status: "draft" | "done" = "draft") {
 
           <div class="hero-actions">
             <button class="secondary-action" type="button" :disabled="isBusy || !selectedSticker" @click="processSubject">{{ isBusy ? "处理中" : "生成抠图" }}</button>
-            <button class="secondary-action" type="button" :disabled="isBusy || !selectedSticker" @click="setVariant(selectedSticker?.variant ?? '白边贴纸')">再来一版</button>
+            <button class="secondary-action" type="button" :disabled="isBusy || !selectedSticker" @click="setVariant(selectedSticker?.variant ?? '白边原图贴纸')">再来一版</button>
             <button v-if="selectedSticker?.status === 'processing' || selectedSticker?.status === 'failed'" class="secondary-action" type="button" @click="recoverSelectedSticker">恢复贴纸</button>
           </div>
           <p v-if="selectedSticker?.errorMessage" class="error-copy">{{ selectedSticker.errorMessage }}</p>
