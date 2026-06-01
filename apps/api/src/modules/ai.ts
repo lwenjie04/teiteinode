@@ -1,5 +1,9 @@
-import type { StickerVariant } from "@tietie/shared";
+import type { StickerVariant, SubjectSelection } from "@tietie/shared";
 import type { FastifyPluginAsync } from "fastify";
+import { randomUUID } from "node:crypto";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import sharp from "sharp";
 import { z } from "zod";
 import { config } from "../config.js";
 
@@ -91,6 +95,34 @@ function canUseQwenImageEdit() {
   return ["qwen-image-edit", "dashscope"].includes(getImageProvider()) && Boolean(getImageApiKey());
 }
 
+function clampPercent(value: number) {
+  return Math.min(100, Math.max(0, value));
+}
+
+function normalizeCrop(selection: SubjectSelection) {
+  if (selection.mode === "box") {
+    const pad = 5;
+    const x = clampPercent(selection.x - pad);
+    const y = clampPercent(selection.y - pad);
+    return {
+      x,
+      y,
+      width: Math.min(100 - x, Math.max(8, selection.width + pad * 2)),
+      height: Math.min(100 - y, Math.max(8, selection.height + pad * 2))
+    };
+  }
+
+  const size = 56;
+  const x = clampPercent(selection.x - size / 2);
+  const y = clampPercent(selection.y - size / 2);
+  return {
+    x,
+    y,
+    width: Math.min(size, 100 - x),
+    height: Math.min(size, 100 - y)
+  };
+}
+
 function buildRemoteDiaryPrompt(input: GenerateDiaryInput) {
   return [
     "You are the diary writing assistant for a Chinese photo journal app named Tietie Diary.",
@@ -162,6 +194,25 @@ async function imageUrlToBlob(imageUrl: string) {
   return response.blob();
 }
 
+async function imageUrlToBuffer(imageUrl: string) {
+  if (imageUrl.startsWith("data:")) {
+    const match = imageUrl.match(/^data:[^;]+;base64,(.+)$/);
+    if (!match) throw new Error("Invalid data URL");
+    return Buffer.from(match[1], "base64");
+  }
+
+  const publicBase = config.PUBLIC_BASE_URL.replace(/\/$/, "");
+  const relativeUrl = imageUrl.startsWith(publicBase) ? imageUrl.slice(publicBase.length) : imageUrl;
+  if (relativeUrl.startsWith("/uploads/") || relativeUrl.startsWith("/assets/")) {
+    const storagePath = relativeUrl.replace(/^\/(?:uploads|assets)\//, "");
+    return readFile(path.join(config.STORAGE_DIR, storagePath));
+  }
+
+  const response = await fetch(imageUrl, { signal: AbortSignal.timeout(12000) });
+  if (!response.ok) throw new Error(`Image fetch failed: ${response.status}`);
+  return Buffer.from(await response.arrayBuffer());
+}
+
 async function blobToDataUrl(blob: Blob) {
   const bytes = Buffer.from(await blob.arrayBuffer());
   const mimeType = blob.type || "image/png";
@@ -174,6 +225,175 @@ async function imageUrlToQwenInput(imageUrl: string) {
     return imageUrl;
   }
   return blobToDataUrl(await imageUrlToBlob(imageUrl));
+}
+
+function colorDistance(data: Buffer, ai: number, bi: number) {
+  const dr = data[ai] - data[bi];
+  const dg = data[ai + 1] - data[bi + 1];
+  const db = data[ai + 2] - data[bi + 2];
+  return Math.sqrt(dr * dr + dg * dg + db * db);
+}
+
+function removeConnectedBorderBackground(data: Buffer, width: number, height: number) {
+  const visited = new Uint8Array(width * height);
+  const queue: number[] = [];
+  let head = 0;
+  const threshold = 42;
+
+  const enqueue = (index: number) => {
+    if (visited[index]) return;
+    visited[index] = 1;
+    queue.push(index);
+  };
+
+  for (let x = 0; x < width; x += 1) {
+    enqueue(x);
+    enqueue((height - 1) * width + x);
+  }
+  for (let y = 0; y < height; y += 1) {
+    enqueue(y * width);
+    enqueue(y * width + width - 1);
+  }
+
+  while (head < queue.length) {
+    const index = queue[head];
+    head += 1;
+    const pixelIndex = index * 4;
+    const x = index % width;
+    const y = Math.floor(index / width);
+    data[pixelIndex + 3] = 0;
+
+    const neighbors = [
+      x > 0 ? index - 1 : -1,
+      x < width - 1 ? index + 1 : -1,
+      y > 0 ? index - width : -1,
+      y < height - 1 ? index + width : -1
+    ];
+
+    for (const next of neighbors) {
+      if (next < 0 || visited[next]) continue;
+      const nextPixelIndex = next * 4;
+      if (data[nextPixelIndex + 3] < 20 || colorDistance(data, pixelIndex, nextPixelIndex) < threshold) {
+        visited[next] = 1;
+        queue.push(next);
+      }
+    }
+  }
+}
+
+async function makeSilhouettePng(subjectPng: Buffer, color: string, blur = 0) {
+  const metadata = await sharp(subjectPng).metadata();
+  if (!metadata.width || !metadata.height) throw new Error("Sticker image metadata missing");
+  const alpha = await sharp(subjectPng).ensureAlpha().extractChannel("alpha").toBuffer();
+  let image = sharp({
+    create: {
+      width: metadata.width,
+      height: metadata.height,
+      channels: 3,
+      background: color
+    }
+  }).joinChannel(alpha);
+  if (blur > 0) image = image.blur(blur);
+  return image.png().toBuffer();
+}
+
+async function composeStickerPng(subjectPng: Buffer, padding = 44) {
+  const metadata = await sharp(subjectPng).metadata();
+  if (!metadata.width || !metadata.height) throw new Error("Sticker image metadata missing");
+  const width = metadata.width + padding * 2;
+  const height = metadata.height + padding * 2;
+  const white = await makeSilhouettePng(subjectPng, "#ffffff");
+  const shadow = await makeSilhouettePng(subjectPng, "#263447", 7);
+  const outlineOffsets = [
+    [16, 0],
+    [-16, 0],
+    [0, 16],
+    [0, -16],
+    [11, 11],
+    [-11, -11],
+    [11, -11],
+    [-11, 11]
+  ];
+
+  return sharp({
+    create: {
+      width,
+      height,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 }
+    }
+  })
+    .composite([
+      { input: shadow, left: padding + 8, top: padding + 12, blend: "over" },
+      ...outlineOffsets.map(([x, y]) => ({ input: white, left: padding + x, top: padding + y, blend: "over" as const })),
+      { input: subjectPng, left: padding, top: padding, blend: "over" }
+    ])
+    .png()
+    .toBuffer();
+}
+
+async function saveGeneratedSticker(buffer: Buffer) {
+  const id = randomUUID();
+  const dateFolder = new Date().toISOString().slice(0, 10);
+  const folder = path.join(config.STORAGE_DIR, "generated", dateFolder);
+  await mkdir(folder, { recursive: true });
+  const filename = `${id}.png`;
+  await writeFile(path.join(folder, filename), buffer);
+  return `${config.PUBLIC_BASE_URL.replace(/\/$/, "")}/uploads/generated/${dateFolder}/${filename}`;
+}
+
+async function createLocalSelectionStickerUrl(sourceUrl: string, selection: SubjectSelection) {
+  const source = await imageUrlToBuffer(sourceUrl);
+  const metadata = await sharp(source).rotate().metadata();
+  if (!metadata.width || !metadata.height) throw new Error("Image metadata missing");
+  const crop = normalizeCrop(selection);
+  const left = Math.round((crop.x / 100) * metadata.width);
+  const top = Math.round((crop.y / 100) * metadata.height);
+  const width = Math.max(1, Math.min(metadata.width - left, Math.round((crop.width / 100) * metadata.width)));
+  const height = Math.max(1, Math.min(metadata.height - top, Math.round((crop.height / 100) * metadata.height)));
+  const maxSide = 900;
+  const scale = Math.min(1, maxSide / Math.max(width, height));
+
+  const raw = await sharp(source)
+    .rotate()
+    .extract({ left, top, width, height })
+    .resize({
+      width: Math.max(1, Math.round(width * scale)),
+      height: Math.max(1, Math.round(height * scale)),
+      fit: "fill"
+    })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  removeConnectedBorderBackground(raw.data, raw.info.width, raw.info.height);
+  const subject = await sharp(raw.data, {
+    raw: {
+      width: raw.info.width,
+      height: raw.info.height,
+      channels: 4
+    }
+  })
+    .png()
+    .toBuffer();
+  const sticker = await composeStickerPng(subject);
+  return saveGeneratedSticker(sticker);
+}
+
+async function createLocalVariantStickerUrl(sourceUrl: string, variant: StickerVariant) {
+  if (variant === "原始抠图") return sourceUrl;
+  const source = await imageUrlToBuffer(sourceUrl);
+  let image = sharp(source).rotate().resize({ width: 900, height: 900, fit: "inside", withoutEnlargement: true }).ensureAlpha();
+
+  if (variant === "旅行插画版") image = image.modulate({ saturation: 1.35, brightness: 1.08 }).linear(1.12, -10).tint("#d7f0ff");
+  if (variant === "可爱漫画版") image = image.modulate({ saturation: 1.55, brightness: 1.06 }).linear(1.18, -12);
+  if (variant === "手绘插画版") image = image.modulate({ saturation: 1.18, brightness: 1.08 }).tint("#fff1cf");
+  if (variant === "黑白线稿版") image = image.grayscale().linear(1.65, -18);
+  if (variant === "白边贴纸") image = image.modulate({ saturation: 1.08 }).linear(1.04, -4);
+
+  const subject = await image.png().toBuffer();
+  const sticker = await composeStickerPng(subject, variant === "旅行插画版" || variant === "白边贴纸" ? 58 : 42);
+  return saveGeneratedSticker(sticker);
 }
 
 function buildStickerEditPrompt(variant: StickerVariant) {
@@ -314,15 +534,29 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
   app.post("/segment", { preHandler: app.authenticate }, async (request) => {
     const body = segmentSchema.parse(request.body);
 
+    const stickerUrl = await createLocalSelectionStickerUrl(body.imageUrl, body.selection);
     return {
       status: "completed",
-      stickerUrl: body.imageUrl,
-      message: "已收到主体选择。当前为本地占位结果，接入 AI 服务后会返回真实抠图。"
+      stickerUrl,
+      message: "后端已生成本地抠图贴纸。"
     };
   });
 
   app.post("/stylize", { preHandler: app.authenticate }, async (request) => {
     const body = stylizeSchema.parse(request.body);
+
+    try {
+      const variant = body.variant as StickerVariant;
+      const stickerUrl = await createLocalVariantStickerUrl(body.imageUrl, variant);
+      return {
+        status: "completed",
+        stickerUrl,
+        variant,
+        message: "后端已生成本地风格贴纸。"
+      };
+    } catch (error) {
+      request.log.warn({ error }, "Local sticker stylization failed, trying remote image provider");
+    }
 
     if (canUseQwenImageEdit() || canUseOpenAiImageEdit()) {
       try {

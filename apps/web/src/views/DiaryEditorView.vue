@@ -3,7 +3,7 @@ import { backgrounds, defaultTags, diaryLengths, moods, stickerVariants, writing
 import type { Background, BoxSelection, Decoration, DecorationKind, Diary, DiaryLength, DoodleStroke, Mood, Sticker, StickerVariant, SubjectSelection, SubjectSelectionMode, WritingStyle } from "@tietie/shared";
 import { computed, reactive, ref, watch, watchEffect } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { deleteUploadedFile, generateDiary, listUploadedFiles, uploadImage } from "../lib/api";
+import { deleteUploadedFile, generateDiary, listUploadedFiles, segmentSubject, stylizeSticker, uploadImage } from "../lib/api";
 import { canvasToBlob, fileToDataUrl, preparePhotoFile } from "../lib/imageTools";
 import { deleteLocalAsset, listLocalAssets, saveLocalAsset } from "../lib/localDb";
 import { useAuthStore } from "../stores/authStore";
@@ -54,7 +54,7 @@ const draftBox = ref<BoxSelection | null>(null);
 const stickerDrag = ref<{ id: string; offsetX: number; offsetY: number; moved: boolean } | null>(null);
 const decorationDrag = ref<{ id: string; offsetX: number; offsetY: number; moved: boolean } | null>(null);
 const activeStroke = ref<DoodleStroke | null>(null);
-const aiNotice = ref("先添加照片，再点选或框选主体。贴纸抠图和风格会在本地生成，不调用图片 AI。");
+const aiNotice = ref("先添加照片，再点选或框选主体。登录后由后端生成贴纸，离线时会用本地效果。");
 const autosaveState = ref("已保存到本地");
 const generatingText = ref(false);
 const assetPanelOpen = ref(false);
@@ -867,11 +867,20 @@ async function setVariant(variant: StickerVariant) {
   const sourceUrl = selectedSticker.value.originalFileUrl ?? selectedSticker.value.fileUrl;
   await store.updateSticker(diary.value.id, stickerId, { variant, status: "processing", errorMessage: undefined });
   try {
-    await new Promise((resolve) => window.setTimeout(resolve, 180));
-    const nextUrl = await createLocalVariantSticker(sourceUrl, variant);
+    let nextUrl = "";
+    let message = "";
+    if (auth.token) {
+      const result = await stylizeSticker(auth.token, { imageUrl: sourceUrl, variant });
+      nextUrl = result.stickerUrl;
+      message = result.message;
+    } else {
+      await new Promise((resolve) => window.setTimeout(resolve, 180));
+      nextUrl = await createLocalVariantSticker(sourceUrl, variant);
+      message = `已在本地生成「${variant}」。`;
+    }
     await store.updateSticker(diary.value.id, stickerId, { fileUrl: nextUrl, variant, status: "ready" });
-    aiNotice.value = `已在本地生成「${variant}」，没有调用图片 AI。`;
-    ui.showToast("已生成本地风格贴纸", "success");
+    aiNotice.value = message;
+    ui.showToast(auth.token ? "后端已生成风格贴纸" : "已生成本地风格贴纸", "success");
   } catch {
     try {
       const nextUrl = await createLocalVariantSticker(sourceUrl, variant);
@@ -881,7 +890,7 @@ async function setVariant(variant: StickerVariant) {
         status: "ready",
         errorMessage: "本地风格化已使用备用效果完成。"
       });
-      aiNotice.value = `已使用本地备用效果生成「${variant}」。`;
+      aiNotice.value = auth.token ? `后端生成失败，已使用本地备用效果生成「${variant}」。` : `已使用本地备用效果生成「${variant}」。`;
       ui.showToast("已使用本地风格", "warning");
     } catch {
       await store.updateSticker(String(route.params.id), stickerId, {
@@ -941,11 +950,20 @@ async function processSubject() {
   const fallbackUrl = selectedSticker.value.sourceImageUrl ?? selectedSticker.value.fileUrl;
   await store.updateSticker(diary.value.id, stickerId, { status: "processing", errorMessage: undefined });
   try {
-    await new Promise((resolve) => window.setTimeout(resolve, 220));
-    const localUrl = await createLocalSelectionSticker(fallbackUrl, selection);
-    await store.updateSticker(diary.value.id, stickerId, { fileUrl: localUrl, originalFileUrl: localUrl, status: "ready" });
-    aiNotice.value = selection.mode === "box" ? "已用本地算法清理边缘背景并生成贴纸。" : "已围绕点选位置生成本地贴纸。";
-    ui.showToast("已生成本地贴纸", "success");
+    let stickerUrl = "";
+    let message = "";
+    if (auth.token) {
+      const result = await segmentSubject(auth.token, { imageUrl: fallbackUrl, selection });
+      stickerUrl = result.stickerUrl;
+      message = result.message;
+    } else {
+      await new Promise((resolve) => window.setTimeout(resolve, 220));
+      stickerUrl = await createLocalSelectionSticker(fallbackUrl, selection);
+      message = selection.mode === "box" ? "已用本地算法清理边缘背景并生成贴纸。" : "已围绕点选位置生成本地贴纸。";
+    }
+    await store.updateSticker(diary.value.id, stickerId, { fileUrl: stickerUrl, originalFileUrl: stickerUrl, status: "ready" });
+    aiNotice.value = message;
+    ui.showToast(auth.token ? "后端已生成贴纸" : "已生成本地贴纸", "success");
   } catch {
     try {
       const localUrl = await createLocalSelectionSticker(fallbackUrl, selection);

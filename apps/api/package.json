@@ -18,6 +18,7 @@
     "@tietie/shared": "file:../../packages/shared",
     "fastify": "^5.3.2",
     "pg": "^8.15.6",
+    "sharp": "^0.34.5",
     "zod": "^3.24.4"
   },
   "devDependencies": {
