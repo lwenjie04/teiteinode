@@ -13,6 +13,20 @@ export interface UploadedFile {
   storage?: string;
 }
 
+async function buildResponseError(response: Response, fallback: string) {
+  const text = await response.text().catch(() => "");
+  let detail = text.trim();
+  if (detail) {
+    try {
+      const parsed = JSON.parse(detail) as { message?: string; error?: string };
+      detail = parsed.message || parsed.error || detail;
+    } catch {
+      // Keep the raw response text when it is not JSON.
+    }
+  }
+  return new Error(`${fallback}: ${response.status}${detail ? ` ${detail}` : ""}`);
+}
+
 async function fetchJson<T>(url: string, options: RequestInit = {}, timeoutMs = 8000): Promise<T> {
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), timeoutMs);
@@ -21,8 +35,13 @@ async function fetchJson<T>(url: string, options: RequestInit = {}, timeoutMs = 
       ...options,
       signal: controller.signal
     });
-    if (!response.ok) throw new Error(`请求失败：${response.status}`);
+    if (!response.ok) throw await buildResponseError(response, "请求失败");
     return response.json() as Promise<T>;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error(`请求超时：${Math.round(timeoutMs / 1000)} 秒内没有完成`);
+    }
+    throw error;
   } finally {
     window.clearTimeout(timer);
   }
@@ -58,7 +77,7 @@ export async function uploadImage(token: string, file: File) {
     },
     body: formData
   });
-  if (!response.ok) throw new Error(`图片上传失败：${response.status}`);
+  if (!response.ok) throw await buildResponseError(response, "图片上传失败");
   return response.json() as Promise<UploadedFile>;
 }
 

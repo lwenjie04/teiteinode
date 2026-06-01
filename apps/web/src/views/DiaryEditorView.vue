@@ -246,6 +246,16 @@ function loadImageFromUrl(src: string) {
   });
 }
 
+function errorText(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  return "未知错误";
+}
+
+function shortError(error: unknown) {
+  return errorText(error).slice(0, 120);
+}
+
 function clampPercent(value: number) {
   return Math.min(100, Math.max(0, value));
 }
@@ -976,6 +986,7 @@ async function setVariant(variant: StickerVariant) {
   const localSourceUrl = selection ? selectedSticker.value.sourceImageUrl ?? selectedSticker.value.originalFileUrl ?? selectedSticker.value.fileUrl : selectedSticker.value.originalFileUrl ?? selectedSticker.value.fileUrl;
   const remoteSourceUrl = backendImageUrlFor(selectedSticker.value, localSourceUrl);
   await store.updateSticker(diary.value.id, stickerId, { variant, status: "processing", errorMessage: undefined });
+  let backendError: unknown;
   try {
     let nextUrl = "";
     let message = "";
@@ -984,7 +995,8 @@ async function setVariant(variant: StickerVariant) {
         const result = await stylizeSticker(auth.token, { imageUrl: remoteSourceUrl, variant, selection });
         nextUrl = result.stickerUrl;
         message = result.message;
-      } catch {
+      } catch (error) {
+        backendError = error;
         const uploadedUrl = await uploadStickerSourceForBackend(localSourceUrl, stickerId);
         const result = await stylizeSticker(auth.token, { imageUrl: uploadedUrl, variant, selection });
         nextUrl = result.stickerUrl;
@@ -997,7 +1009,8 @@ async function setVariant(variant: StickerVariant) {
           const result = await stylizeSticker(auth.token, { imageUrl: uploadedUrl, variant, selection });
           nextUrl = result.stickerUrl;
           message = result.message;
-        } catch {
+        } catch (error) {
+          backendError = error;
           await new Promise((resolve) => window.setTimeout(resolve, 180));
           nextUrl = await createLocalVariantSticker(localSourceUrl, variant);
           message = `已在本地生成「${variant}」。`;
@@ -1011,23 +1024,26 @@ async function setVariant(variant: StickerVariant) {
     await store.updateSticker(diary.value.id, stickerId, { fileUrl: nextUrl, variant, status: "ready" });
     aiNotice.value = message;
     ui.showToast(auth.token ? "后端已生成风格贴纸" : "已生成本地风格贴纸", "success");
-  } catch {
+  } catch (error) {
+    const detail = backendError ? `${shortError(backendError)}；重试失败：${shortError(error)}` : shortError(error);
     try {
       const nextUrl = await createLocalVariantSticker(localSourceUrl, variant);
       await store.updateSticker(String(route.params.id), stickerId, {
         fileUrl: nextUrl,
         variant,
         status: "ready",
-        errorMessage: "本地风格化已使用备用效果完成。"
+        errorMessage: auth.token ? `后端风格化失败，已用本地备用效果。原因：${detail}` : "本地风格化已使用备用效果完成。"
       });
-      aiNotice.value = auth.token ? `后端生成失败，已使用本地备用效果生成「${variant}」。` : `已使用本地备用效果生成「${variant}」。`;
+      aiNotice.value = auth.token ? `后端生成失败，已使用本地备用效果生成「${variant}」。原因：${detail}` : `已使用本地备用效果生成「${variant}」。`;
       ui.showToast("已使用本地风格", "warning");
-    } catch {
+    } catch (fallbackError) {
+      const finalDetail = `后端/主流程：${detail}；本地备用：${shortError(fallbackError)}`;
       await store.updateSticker(String(route.params.id), stickerId, {
         fileUrl: localSourceUrl,
         status: "ready",
-        errorMessage: "这次风格化没有处理好，已恢复原贴纸，可以稍后再试。"
+        errorMessage: `风格化失败，已恢复原贴纸。原因：${finalDetail}`
       });
+      aiNotice.value = `风格化失败，已恢复原贴纸。原因：${finalDetail}`;
       ui.showToast("已恢复贴纸", "warning");
     }
   }
@@ -1080,6 +1096,7 @@ async function processSubject() {
   const localSourceUrl = selectedSticker.value.sourceImageUrl ?? selectedSticker.value.fileUrl;
   const remoteSourceUrl = backendImageUrlFor(selectedSticker.value, localSourceUrl);
   await store.updateSticker(diary.value.id, stickerId, { status: "processing", errorMessage: undefined });
+  let backendError: unknown;
   try {
     let stickerUrl = "";
     let message = "";
@@ -1088,7 +1105,8 @@ async function processSubject() {
         const result = await segmentSubject(auth.token, { imageUrl: remoteSourceUrl, selection });
         stickerUrl = result.stickerUrl;
         message = result.message;
-      } catch {
+      } catch (error) {
+        backendError = error;
         const uploadedUrl = await uploadStickerSourceForBackend(localSourceUrl, stickerId);
         const result = await segmentSubject(auth.token, { imageUrl: uploadedUrl, selection });
         stickerUrl = result.stickerUrl;
@@ -1101,7 +1119,8 @@ async function processSubject() {
           const result = await segmentSubject(auth.token, { imageUrl: uploadedUrl, selection });
           stickerUrl = result.stickerUrl;
           message = result.message;
-        } catch {
+        } catch (error) {
+          backendError = error;
           await new Promise((resolve) => window.setTimeout(resolve, 220));
           stickerUrl = await createLocalSelectionSticker(localSourceUrl, selection);
           message = selection.mode === "box" ? "已用本地算法清理边缘背景并生成贴纸。" : "已围绕点选位置生成本地贴纸。";
@@ -1115,24 +1134,26 @@ async function processSubject() {
     await store.updateSticker(diary.value.id, stickerId, { fileUrl: stickerUrl, originalFileUrl: stickerUrl, status: "ready" });
     aiNotice.value = message;
     ui.showToast(auth.token ? "后端已生成贴纸" : "已生成本地贴纸", "success");
-  } catch {
+  } catch (error) {
+    const detail = backendError ? `${shortError(backendError)}；重试失败：${shortError(error)}` : shortError(error);
     try {
       const localUrl = await createLocalSelectionSticker(localSourceUrl, selection);
       await store.updateSticker(String(route.params.id), stickerId, {
         fileUrl: localUrl,
         originalFileUrl: localUrl,
         status: "ready",
-        errorMessage: "本地抠图已使用备用裁切结果。"
+        errorMessage: auth.token ? `后端抠图失败，已使用本地备用裁切。原因：${detail}` : "本地抠图已使用备用裁切结果。"
       });
-      aiNotice.value = "本地边缘清理没有完成，已先使用备用裁切贴纸。";
+      aiNotice.value = auth.token ? `后端抠图失败，已先使用本地备用裁切。原因：${detail}` : "本地边缘清理没有完成，已先使用备用裁切贴纸。";
       ui.showToast("已使用本地裁切", "warning");
-    } catch {
+    } catch (fallbackError) {
+      const finalDetail = `后端/主流程：${detail}；本地备用：${shortError(fallbackError)}`;
       await store.updateSticker(String(route.params.id), stickerId, {
         fileUrl: localSourceUrl,
         status: "ready",
-        errorMessage: "这次没有处理好，内容已经帮你保存，可以稍后再试。"
+        errorMessage: `抠图失败，已恢复原图贴纸。原因：${finalDetail}`
       });
-      aiNotice.value = "抠图请求没有完成，已自动恢复原图贴纸。";
+      aiNotice.value = `抠图失败，已恢复原图贴纸。原因：${finalDetail}`;
       ui.showToast("已恢复原图贴纸", "warning");
     }
   }
