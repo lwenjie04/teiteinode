@@ -556,6 +556,23 @@ async function saveImageSourceLocally(source: PreparedImageSource) {
   });
 }
 
+async function fileFromImageUrl(sourceUrl: string, filename = "sticker-source.png") {
+  const response = await fetch(sourceUrl);
+  if (!response.ok) throw new Error("图片读取失败");
+  const blob = await response.blob();
+  const extension = blob.type.includes("jpeg") ? "jpg" : blob.type.includes("webp") ? "webp" : "png";
+  const safeName = filename.includes(".") ? filename : `${filename}.${extension}`;
+  return new File([blob], safeName, { type: blob.type || "image/png", lastModified: Date.now() });
+}
+
+async function uploadStickerSourceForBackend(sourceUrl: string, stickerId: string) {
+  if (!auth.token || !diary.value) return "";
+  const file = await fileFromImageUrl(sourceUrl, `sticker-${stickerId}.png`);
+  const uploaded = await uploadImage(auth.token, file);
+  await store.updateSticker(diary.value.id, stickerId, { remoteImageUrl: uploaded.url });
+  return uploaded.url;
+}
+
 function relativePoint(event: PointerEvent | MouseEvent) {
   const rect = sourceFrameRef.value?.getBoundingClientRect() ?? sourceImageRef.value?.getBoundingClientRect();
   if (!rect) return null;
@@ -956,13 +973,33 @@ async function setVariant(variant: StickerVariant) {
     let nextUrl = "";
     let message = "";
     if (auth.token && remoteSourceUrl) {
-      const result = await stylizeSticker(auth.token, { imageUrl: remoteSourceUrl, variant, selection });
-      nextUrl = result.stickerUrl;
-      message = result.message;
+      try {
+        const result = await stylizeSticker(auth.token, { imageUrl: remoteSourceUrl, variant, selection });
+        nextUrl = result.stickerUrl;
+        message = result.message;
+      } catch {
+        const uploadedUrl = await uploadStickerSourceForBackend(localSourceUrl, stickerId);
+        const result = await stylizeSticker(auth.token, { imageUrl: uploadedUrl, variant, selection });
+        nextUrl = result.stickerUrl;
+        message = result.message;
+      }
     } else {
-      await new Promise((resolve) => window.setTimeout(resolve, 180));
-      nextUrl = await createLocalVariantSticker(localSourceUrl, variant);
-      message = `已在本地生成「${variant}」。`;
+      if (auth.token) {
+        try {
+          const uploadedUrl = await uploadStickerSourceForBackend(localSourceUrl, stickerId);
+          const result = await stylizeSticker(auth.token, { imageUrl: uploadedUrl, variant, selection });
+          nextUrl = result.stickerUrl;
+          message = result.message;
+        } catch {
+          await new Promise((resolve) => window.setTimeout(resolve, 180));
+          nextUrl = await createLocalVariantSticker(localSourceUrl, variant);
+          message = `已在本地生成「${variant}」。`;
+        }
+      } else {
+        await new Promise((resolve) => window.setTimeout(resolve, 180));
+        nextUrl = await createLocalVariantSticker(localSourceUrl, variant);
+        message = `已在本地生成「${variant}」。`;
+      }
     }
     await store.updateSticker(diary.value.id, stickerId, { fileUrl: nextUrl, variant, status: "ready" });
     aiNotice.value = message;
@@ -1040,13 +1077,33 @@ async function processSubject() {
     let stickerUrl = "";
     let message = "";
     if (auth.token && remoteSourceUrl) {
-      const result = await segmentSubject(auth.token, { imageUrl: remoteSourceUrl, selection });
-      stickerUrl = result.stickerUrl;
-      message = result.message;
+      try {
+        const result = await segmentSubject(auth.token, { imageUrl: remoteSourceUrl, selection });
+        stickerUrl = result.stickerUrl;
+        message = result.message;
+      } catch {
+        const uploadedUrl = await uploadStickerSourceForBackend(localSourceUrl, stickerId);
+        const result = await segmentSubject(auth.token, { imageUrl: uploadedUrl, selection });
+        stickerUrl = result.stickerUrl;
+        message = result.message;
+      }
     } else {
-      await new Promise((resolve) => window.setTimeout(resolve, 220));
-      stickerUrl = await createLocalSelectionSticker(localSourceUrl, selection);
-      message = selection.mode === "box" ? "已用本地算法清理边缘背景并生成贴纸。" : "已围绕点选位置生成本地贴纸。";
+      if (auth.token) {
+        try {
+          const uploadedUrl = await uploadStickerSourceForBackend(localSourceUrl, stickerId);
+          const result = await segmentSubject(auth.token, { imageUrl: uploadedUrl, selection });
+          stickerUrl = result.stickerUrl;
+          message = result.message;
+        } catch {
+          await new Promise((resolve) => window.setTimeout(resolve, 220));
+          stickerUrl = await createLocalSelectionSticker(localSourceUrl, selection);
+          message = selection.mode === "box" ? "已用本地算法清理边缘背景并生成贴纸。" : "已围绕点选位置生成本地贴纸。";
+        }
+      } else {
+        await new Promise((resolve) => window.setTimeout(resolve, 220));
+        stickerUrl = await createLocalSelectionSticker(localSourceUrl, selection);
+        message = selection.mode === "box" ? "已用本地算法清理边缘背景并生成贴纸。" : "已围绕点选位置生成本地贴纸。";
+      }
     }
     await store.updateSticker(diary.value.id, stickerId, { fileUrl: stickerUrl, originalFileUrl: stickerUrl, status: "ready" });
     aiNotice.value = message;
