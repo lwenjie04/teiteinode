@@ -3,7 +3,7 @@ import { backgrounds, defaultTags, diaryLengths, moods, stickerVariants, writing
 import type { Background, BoxSelection, Decoration, DecorationKind, Diary, DiaryLength, DoodleStroke, Mood, Sticker, StickerVariant, SubjectSelection, SubjectSelectionMode, WritingStyle } from "@tietie/shared";
 import { computed, reactive, ref, watch, watchEffect } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { deleteUploadedFile, generateDiary, listUploadedFiles, segmentSubject, stylizeSticker, uploadImage } from "../lib/api";
+import { deleteUploadedFile, generateDiary, listUploadedFiles, uploadImage } from "../lib/api";
 import { canvasToBlob, fileToDataUrl, preparePhotoFile } from "../lib/imageTools";
 import { deleteLocalAsset, listLocalAssets, saveLocalAsset } from "../lib/localDb";
 import { useAuthStore } from "../stores/authStore";
@@ -54,7 +54,7 @@ const draftBox = ref<BoxSelection | null>(null);
 const stickerDrag = ref<{ id: string; offsetX: number; offsetY: number; moved: boolean } | null>(null);
 const decorationDrag = ref<{ id: string; offsetX: number; offsetY: number; moved: boolean } | null>(null);
 const activeStroke = ref<DoodleStroke | null>(null);
-const aiNotice = ref("先添加照片，再点选或框选主体。未接真实 AI 时会先用本地裁切生成贴纸。");
+const aiNotice = ref("先添加照片，再点选或框选主体。贴纸抠图和风格会在本地生成，不调用图片 AI。");
 const autosaveState = ref("已保存到本地");
 const generatingText = ref(false);
 const assetPanelOpen = ref(false);
@@ -252,6 +252,91 @@ function normalizeCrop(selection: SubjectSelection) {
   };
 }
 
+function colorDistance(a: Uint8ClampedArray, ai: number, b: Uint8ClampedArray, bi: number) {
+  const dr = a[ai] - b[bi];
+  const dg = a[ai + 1] - b[bi + 1];
+  const db = a[ai + 2] - b[bi + 2];
+  return Math.sqrt(dr * dr + dg * dg + db * db);
+}
+
+function removeConnectedBorderBackground(canvas: HTMLCanvasElement) {
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) return;
+
+  const { width, height } = canvas;
+  const imageData = context.getImageData(0, 0, width, height);
+  const data = imageData.data;
+  const visited = new Uint8Array(width * height);
+  const queue: number[] = [];
+  let head = 0;
+  const threshold = 42;
+
+  const enqueue = (index: number) => {
+    if (visited[index]) return;
+    visited[index] = 1;
+    queue.push(index);
+  };
+
+  for (let x = 0; x < width; x += 1) {
+    enqueue(x);
+    enqueue((height - 1) * width + x);
+  }
+  for (let y = 0; y < height; y += 1) {
+    enqueue(y * width);
+    enqueue(y * width + width - 1);
+  }
+
+  while (head < queue.length) {
+    const index = queue[head];
+    head += 1;
+    const pixelIndex = index * 4;
+    const x = index % width;
+    const y = Math.floor(index / width);
+    data[pixelIndex + 3] = 0;
+
+    const neighbors = [
+      x > 0 ? index - 1 : -1,
+      x < width - 1 ? index + 1 : -1,
+      y > 0 ? index - width : -1,
+      y < height - 1 ? index + width : -1
+    ];
+
+    for (const next of neighbors) {
+      if (next < 0 || visited[next]) continue;
+      const nextPixelIndex = next * 4;
+      if (data[nextPixelIndex + 3] < 20 || colorDistance(data, pixelIndex, data, nextPixelIndex) < threshold) {
+        visited[next] = 1;
+        queue.push(next);
+      }
+    }
+  }
+
+  context.putImageData(imageData, 0, 0);
+}
+
+function drawStickerSilhouette(context: CanvasRenderingContext2D, image: HTMLCanvasElement, padding: number, shadow = true) {
+  const outlineSteps = [
+    { offset: 16, color: "#ffffff" },
+    { offset: 10, color: "#ffffff" },
+    { offset: 5, color: "#ffffff" }
+  ];
+
+  context.save();
+  if (shadow) {
+    context.shadowColor = "rgba(38, 52, 71, 0.24)";
+    context.shadowBlur = 10;
+    context.shadowOffsetX = 8;
+    context.shadowOffsetY = 12;
+  }
+  for (const step of outlineSteps) {
+    context.filter = `drop-shadow(${step.offset}px 0 0 ${step.color}) drop-shadow(${-step.offset}px 0 0 ${step.color}) drop-shadow(0 ${step.offset}px 0 ${step.color}) drop-shadow(0 ${-step.offset}px 0 ${step.color})`;
+    context.drawImage(image, padding, padding);
+  }
+  context.restore();
+
+  context.drawImage(image, padding, padding);
+}
+
 async function createLocalSelectionSticker(sourceUrl: string, selection: SubjectSelection) {
   const image = await loadImageFromUrl(sourceUrl);
   const crop = normalizeCrop(selection);
@@ -260,12 +345,21 @@ async function createLocalSelectionSticker(sourceUrl: string, selection: Subject
   const sw = Math.max(1, Math.round((crop.width / 100) * image.naturalWidth));
   const sh = Math.max(1, Math.round((crop.height / 100) * image.naturalHeight));
   const scale = Math.min(1, 900 / Math.max(sw, sh));
+  const cropCanvas = document.createElement("canvas");
+  cropCanvas.width = Math.max(1, Math.round(sw * scale));
+  cropCanvas.height = Math.max(1, Math.round(sh * scale));
+  const cropContext = cropCanvas.getContext("2d", { willReadFrequently: true });
+  if (!cropContext) throw new Error("画布创建失败");
+  cropContext.drawImage(image, sx, sy, sw, sh, 0, 0, cropCanvas.width, cropCanvas.height);
+  removeConnectedBorderBackground(cropCanvas);
+
+  const padding = 42;
   const canvas = document.createElement("canvas");
-  canvas.width = Math.max(1, Math.round(sw * scale));
-  canvas.height = Math.max(1, Math.round(sh * scale));
+  canvas.width = cropCanvas.width + padding * 2;
+  canvas.height = cropCanvas.height + padding * 2;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("画布创建失败");
-  context.drawImage(image, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+  drawStickerSilhouette(context, cropCanvas, padding);
   return canvas.toDataURL("image/png");
 }
 
@@ -326,37 +420,40 @@ async function createLocalVariantSticker(sourceUrl: string, variant: StickerVari
   if (variant === "原始抠图") return sourceUrl;
   const image = await loadImageFromUrl(sourceUrl);
   const maxSide = 900;
-  const padding = variant === "白边贴纸" || variant === "旅行插画版" ? 54 : 28;
+  const padding = variant === "白边贴纸" || variant === "旅行插画版" ? 58 : 38;
   const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
   const imageWidth = Math.max(1, Math.round(image.naturalWidth * scale));
   const imageHeight = Math.max(1, Math.round(image.naturalHeight * scale));
+  const styledImage = document.createElement("canvas");
+  styledImage.width = imageWidth;
+  styledImage.height = imageHeight;
+  const styledContext = styledImage.getContext("2d");
+  if (!styledContext) throw new Error("画布创建失败");
+  styledContext.filter = localVariantFilter(variant);
+  styledContext.drawImage(image, 0, 0, imageWidth, imageHeight);
+  styledContext.filter = "none";
+  drawLocalVariantDecoration(styledContext, imageWidth, imageHeight, variant);
+
   const canvas = document.createElement("canvas");
   canvas.width = imageWidth + padding * 2;
   canvas.height = imageHeight + padding * 2;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("画布创建失败");
 
-  if (variant === "白边贴纸" || variant === "旅行插画版") {
-    context.fillStyle = "#ffffff";
-    context.shadowColor = "rgba(38, 52, 71, 0.16)";
-    context.shadowBlur = 0;
-    context.shadowOffsetY = 10;
-    context.roundRect(14, 14, canvas.width - 28, canvas.height - 28, 28);
-    context.fill();
-    context.shadowColor = "transparent";
-  }
-
-  context.filter = localVariantFilter(variant);
-  context.drawImage(image, padding, padding, imageWidth, imageHeight);
-  context.filter = "none";
-  drawLocalVariantDecoration(context, canvas.width, canvas.height, variant);
+  drawStickerSilhouette(context, styledImage, padding);
 
   if (variant === "旅行插画版" || variant === "可爱漫画版" || variant === "黑白线稿版") {
     context.save();
-    context.strokeStyle = variant === "黑白线稿版" ? "#111111" : "#263447";
-    context.lineWidth = variant === "黑白线稿版" ? 5 : 8;
-    context.lineJoin = "round";
-    context.strokeRect(padding - 4, padding - 4, imageWidth + 8, imageHeight + 8);
+    context.globalCompositeOperation = "source-atop";
+    context.strokeStyle = variant === "黑白线稿版" ? "rgba(0, 0, 0, 0.34)" : "rgba(24, 50, 72, 0.28)";
+    context.lineWidth = variant === "黑白线稿版" ? 4 : 6;
+    const gap = 18;
+    for (let x = -imageHeight; x < canvas.width; x += gap) {
+      context.beginPath();
+      context.moveTo(x, canvas.height);
+      context.lineTo(x + imageHeight, 0);
+      context.stroke();
+    }
     context.restore();
   }
 
@@ -770,20 +867,11 @@ async function setVariant(variant: StickerVariant) {
   const sourceUrl = selectedSticker.value.originalFileUrl ?? selectedSticker.value.fileUrl;
   await store.updateSticker(diary.value.id, stickerId, { variant, status: "processing", errorMessage: undefined });
   try {
-    if (auth.token) {
-      const result = await stylizeSticker(auth.token, { imageUrl: sourceUrl, variant });
-      const localFallback = result.stickerUrl === sourceUrl;
-      const nextUrl = localFallback ? await createLocalVariantSticker(sourceUrl, variant) : result.stickerUrl;
-      await store.updateSticker(diary.value.id, stickerId, { fileUrl: nextUrl, variant: result.variant, status: "ready" });
-      aiNotice.value = localFallback ? `真实 AI 尚未返回新图，已用本地效果生成「${variant}」。` : result.message;
-      ui.showToast(localFallback ? "已生成本地风格贴纸" : "贴纸版本已更新", "success");
-    } else {
-      await new Promise((resolve) => window.setTimeout(resolve, 350));
-      const nextUrl = await createLocalVariantSticker(sourceUrl, variant);
-      await store.updateSticker(diary.value.id, stickerId, { fileUrl: nextUrl, variant, status: "ready" });
-      aiNotice.value = `已用本地效果生成「${variant}」。接入真实 AI 后会生成更精细版本。`;
-      ui.showToast("已生成本地风格贴纸", "success");
-    }
+    await new Promise((resolve) => window.setTimeout(resolve, 180));
+    const nextUrl = await createLocalVariantSticker(sourceUrl, variant);
+    await store.updateSticker(diary.value.id, stickerId, { fileUrl: nextUrl, variant, status: "ready" });
+    aiNotice.value = `已在本地生成「${variant}」，没有调用图片 AI。`;
+    ui.showToast("已生成本地风格贴纸", "success");
   } catch {
     try {
       const nextUrl = await createLocalVariantSticker(sourceUrl, variant);
@@ -791,9 +879,9 @@ async function setVariant(variant: StickerVariant) {
         fileUrl: nextUrl,
         variant,
         status: "ready",
-        errorMessage: "AI 风格化没有完成，已先使用本地效果。"
+        errorMessage: "本地风格化已使用备用效果完成。"
       });
-      aiNotice.value = `AI 风格化没有完成，已先使用本地「${variant}」。`;
+      aiNotice.value = `已使用本地备用效果生成「${variant}」。`;
       ui.showToast("已使用本地风格", "warning");
     } catch {
       await store.updateSticker(String(route.params.id), stickerId, {
@@ -853,19 +941,11 @@ async function processSubject() {
   const fallbackUrl = selectedSticker.value.sourceImageUrl ?? selectedSticker.value.fileUrl;
   await store.updateSticker(diary.value.id, stickerId, { status: "processing", errorMessage: undefined });
   try {
-    if (auth.token) {
-      const result = await segmentSubject(auth.token, { imageUrl: fallbackUrl, selection });
-      const localUrl = result.stickerUrl === fallbackUrl ? await createLocalSelectionSticker(fallbackUrl, selection) : result.stickerUrl;
-      await store.updateSticker(diary.value.id, stickerId, { fileUrl: localUrl, originalFileUrl: localUrl, status: "ready" });
-      aiNotice.value = result.stickerUrl === fallbackUrl ? "真实 AI 尚未返回新图，已先用本地裁切生成可编辑贴纸。" : result.message;
-      ui.showToast(result.stickerUrl === fallbackUrl ? "已生成本地裁切贴纸" : "抠图已完成", "success");
-    } else {
-      await new Promise((resolve) => window.setTimeout(resolve, 450));
-      const localUrl = await createLocalSelectionSticker(fallbackUrl, selection);
-      await store.updateSticker(diary.value.id, stickerId, { fileUrl: localUrl, originalFileUrl: localUrl, status: "ready" });
-      aiNotice.value = selection.mode === "box" ? "已把框选区域裁成贴纸。接入真实 AI 后会进一步去背景。" : "已围绕点选位置生成贴纸。接入真实 AI 后会进一步去背景。";
-      ui.showToast("已生成本地裁切贴纸", "success");
-    }
+    await new Promise((resolve) => window.setTimeout(resolve, 220));
+    const localUrl = await createLocalSelectionSticker(fallbackUrl, selection);
+    await store.updateSticker(diary.value.id, stickerId, { fileUrl: localUrl, originalFileUrl: localUrl, status: "ready" });
+    aiNotice.value = selection.mode === "box" ? "已用本地算法清理边缘背景并生成贴纸。" : "已围绕点选位置生成本地贴纸。";
+    ui.showToast("已生成本地贴纸", "success");
   } catch {
     try {
       const localUrl = await createLocalSelectionSticker(fallbackUrl, selection);
@@ -873,9 +953,9 @@ async function processSubject() {
         fileUrl: localUrl,
         originalFileUrl: localUrl,
         status: "ready",
-        errorMessage: "AI 请求没有完成，已先使用本地裁切结果。"
+        errorMessage: "本地抠图已使用备用裁切结果。"
       });
-      aiNotice.value = "AI 请求没有完成，已先使用本地裁切贴纸。";
+      aiNotice.value = "本地边缘清理没有完成，已先使用备用裁切贴纸。";
       ui.showToast("已使用本地裁切", "warning");
     } catch {
       await store.updateSticker(String(route.params.id), stickerId, {
