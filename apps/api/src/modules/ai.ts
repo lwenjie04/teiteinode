@@ -458,6 +458,18 @@ async function createLocalVariantStickerUrl(sourceUrl: string, variant: StickerV
   return saveGeneratedSticker(sticker);
 }
 
+async function createStickerSelfTestImage() {
+  const svg = `<svg width="320" height="240" xmlns="http://www.w3.org/2000/svg">
+    <rect width="320" height="240" fill="#8fd3ff"/>
+    <circle cx="160" cy="120" r="70" fill="#ffcf56"/>
+    <rect x="126" y="88" width="68" height="68" rx="14" fill="#ffffff"/>
+  </svg>`;
+  const source = await sharp(Buffer.from(svg)).png().toBuffer();
+  const dataUrl = `data:image/png;base64,${source.toString("base64")}`;
+  const selection: SubjectSelection = { mode: "box", x: 8, y: 8, width: 84, height: 84 };
+  return createLocalSelectionStickerUrl(dataUrl, selection);
+}
+
 function buildStickerEditPrompt(variant: StickerVariant) {
   const styleMap: Record<StickerVariant, string> = {
     白边原图贴纸: "make a clean photo die-cut sticker with a thick white border and soft drop shadow",
@@ -592,6 +604,16 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
     imageAvailable: canUseOpenAiImageEdit() || canUseQwenImageEdit(),
     message: config.AI_API_KEY ? "AI 服务已配置" : "AI 服务尚未配置 API Key"
   }));
+
+  app.get("/sticker-self-test", async () => {
+    const stickerUrl = await createStickerSelfTestImage();
+    return {
+      ok: true,
+      status: "completed",
+      stickerUrl,
+      message: "贴纸抠图服务可用。"
+    };
+  });
 
   app.post("/segment", { preHandler: app.authenticate }, async (request) => {
     const body = segmentSchema.parse(request.body);
