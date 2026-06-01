@@ -589,7 +589,7 @@ function isVolatileImageUrl(url?: string) {
 }
 
 function stickerHasVolatileUrl(sticker: Sticker) {
-  return [sticker.fileUrl, sticker.sourceImageUrl, sticker.originalFileUrl].some(isVolatileImageUrl);
+  return [sticker.fileUrl, sticker.sourceImageUrl, sticker.originalFileUrl, sticker.remoteImageUrl].some(isVolatileImageUrl);
 }
 
 function stickerNeedsRepair(sticker: Sticker) {
@@ -722,6 +722,7 @@ async function useAssetFromLibrary(asset: AssetLibraryItem) {
     fileUrl: asset.url,
     sourceImageUrl: asset.url,
     originalFileUrl: asset.url,
+    remoteImageUrl: asset.source === "cloud" ? asset.url : undefined,
     status: "ready",
     errorMessage: undefined
   });
@@ -746,6 +747,7 @@ async function replaceRepairTargetWithSource(source: PreparedImageSource) {
     fileUrl: source.localUrl,
     sourceImageUrl: source.localUrl,
     originalFileUrl: source.localUrl,
+    remoteImageUrl: source.uploaded ? source.url : undefined,
     status: "ready",
     errorMessage: undefined
   });
@@ -780,6 +782,9 @@ async function addFiles(event: Event) {
     }
     await saveImageSourceLocally(source);
     const sticker = await store.addSticker(diary.value.id, source.localUrl, "白边原图贴纸");
+    if (sticker && source.uploaded) {
+      await store.updateSticker(diary.value.id, sticker.id, { remoteImageUrl: source.url });
+    }
     selectedStickerId.value = sticker?.id ?? selectedStickerId.value;
   }
   input.value = "";
@@ -932,18 +937,19 @@ async function setVariant(variant: StickerVariant) {
   if (!diary.value || !selectedSticker.value || isBusy.value) return;
   const stickerId = selectedSticker.value.id;
   const selection = selectedSticker.value.selection;
-  const sourceUrl = selection ? selectedSticker.value.sourceImageUrl ?? selectedSticker.value.originalFileUrl ?? selectedSticker.value.fileUrl : selectedSticker.value.originalFileUrl ?? selectedSticker.value.fileUrl;
+  const localSourceUrl = selection ? selectedSticker.value.sourceImageUrl ?? selectedSticker.value.originalFileUrl ?? selectedSticker.value.fileUrl : selectedSticker.value.originalFileUrl ?? selectedSticker.value.fileUrl;
+  const remoteSourceUrl = selectedSticker.value.remoteImageUrl ?? localSourceUrl;
   await store.updateSticker(diary.value.id, stickerId, { variant, status: "processing", errorMessage: undefined });
   try {
     let nextUrl = "";
     let message = "";
-    if (auth.token) {
-      const result = await stylizeSticker(auth.token, { imageUrl: sourceUrl, variant, selection });
+    if (auth.token && selectedSticker.value.remoteImageUrl) {
+      const result = await stylizeSticker(auth.token, { imageUrl: remoteSourceUrl, variant, selection });
       nextUrl = result.stickerUrl;
       message = result.message;
     } else {
       await new Promise((resolve) => window.setTimeout(resolve, 180));
-      nextUrl = await createLocalVariantSticker(sourceUrl, variant);
+      nextUrl = await createLocalVariantSticker(localSourceUrl, variant);
       message = `已在本地生成「${variant}」。`;
     }
     await store.updateSticker(diary.value.id, stickerId, { fileUrl: nextUrl, variant, status: "ready" });
@@ -951,7 +957,7 @@ async function setVariant(variant: StickerVariant) {
     ui.showToast(auth.token ? "后端已生成风格贴纸" : "已生成本地风格贴纸", "success");
   } catch {
     try {
-      const nextUrl = await createLocalVariantSticker(sourceUrl, variant);
+      const nextUrl = await createLocalVariantSticker(localSourceUrl, variant);
       await store.updateSticker(String(route.params.id), stickerId, {
         fileUrl: nextUrl,
         variant,
@@ -962,7 +968,7 @@ async function setVariant(variant: StickerVariant) {
       ui.showToast("已使用本地风格", "warning");
     } catch {
       await store.updateSticker(String(route.params.id), stickerId, {
-        fileUrl: sourceUrl,
+        fileUrl: localSourceUrl,
         status: "ready",
         errorMessage: "这次风格化没有处理好，已恢复原贴纸，可以稍后再试。"
       });
@@ -1015,18 +1021,19 @@ async function processSubject() {
   }
   const stickerId = selectedSticker.value.id;
   const selection = selectedSticker.value.selection;
-  const fallbackUrl = selectedSticker.value.sourceImageUrl ?? selectedSticker.value.fileUrl;
+  const localSourceUrl = selectedSticker.value.sourceImageUrl ?? selectedSticker.value.fileUrl;
+  const remoteSourceUrl = selectedSticker.value.remoteImageUrl ?? localSourceUrl;
   await store.updateSticker(diary.value.id, stickerId, { status: "processing", errorMessage: undefined });
   try {
     let stickerUrl = "";
     let message = "";
-    if (auth.token) {
-      const result = await segmentSubject(auth.token, { imageUrl: fallbackUrl, selection });
+    if (auth.token && selectedSticker.value.remoteImageUrl) {
+      const result = await segmentSubject(auth.token, { imageUrl: remoteSourceUrl, selection });
       stickerUrl = result.stickerUrl;
       message = result.message;
     } else {
       await new Promise((resolve) => window.setTimeout(resolve, 220));
-      stickerUrl = await createLocalSelectionSticker(fallbackUrl, selection);
+      stickerUrl = await createLocalSelectionSticker(localSourceUrl, selection);
       message = selection.mode === "box" ? "已用本地算法清理边缘背景并生成贴纸。" : "已围绕点选位置生成本地贴纸。";
     }
     await store.updateSticker(diary.value.id, stickerId, { fileUrl: stickerUrl, originalFileUrl: stickerUrl, status: "ready" });
@@ -1034,7 +1041,7 @@ async function processSubject() {
     ui.showToast(auth.token ? "后端已生成贴纸" : "已生成本地贴纸", "success");
   } catch {
     try {
-      const localUrl = await createLocalSelectionSticker(fallbackUrl, selection);
+      const localUrl = await createLocalSelectionSticker(localSourceUrl, selection);
       await store.updateSticker(String(route.params.id), stickerId, {
         fileUrl: localUrl,
         originalFileUrl: localUrl,
@@ -1045,7 +1052,7 @@ async function processSubject() {
       ui.showToast("已使用本地裁切", "warning");
     } catch {
       await store.updateSticker(String(route.params.id), stickerId, {
-        fileUrl: fallbackUrl,
+        fileUrl: localSourceUrl,
         status: "ready",
         errorMessage: "这次没有处理好，内容已经帮你保存，可以稍后再试。"
       });
@@ -1335,7 +1342,7 @@ function isGeneratedCoverFilename(filename: string, diaryId: string) {
 function isImageUrlStillReferenced(url: string) {
   return store.diaries.some((item) => {
     if (item.cardImageUrl === url) return true;
-    return item.stickers.some((sticker) => sticker.fileUrl === url || sticker.sourceImageUrl === url || sticker.originalFileUrl === url);
+    return item.stickers.some((sticker) => sticker.fileUrl === url || sticker.sourceImageUrl === url || sticker.originalFileUrl === url || sticker.remoteImageUrl === url);
   });
 }
 

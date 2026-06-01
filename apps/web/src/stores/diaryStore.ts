@@ -261,6 +261,7 @@ export const useDiaryStore = defineStore("diaries", {
         fileUrl,
         sourceImageUrl: fileUrl,
         originalFileUrl: fileUrl,
+        remoteImageUrl: undefined,
         variant,
         status: "ready",
         x: 32 + diary.stickers.length * 22,

@@ -73,6 +73,7 @@ export interface Sticker extends StickerTransform {
   fileUrl: string;
   sourceImageUrl?: string;
   originalFileUrl?: string;
+  remoteImageUrl?: string;
   variant: StickerVariant;
   status: StickerStatus;
   selection?: SubjectSelection;
