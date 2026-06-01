@@ -746,7 +746,7 @@ h2 {
   margin-bottom: 14px;
 }
 
-.step-strip span {
+.step-strip button {
   min-height: 36px;
   padding: 9px 6px;
   border: 1px solid var(--line);
@@ -756,12 +756,18 @@ h2 {
   font-size: 12px;
   font-weight: 900;
   text-align: center;
+  cursor: pointer;
 }
 
-.step-strip span.active {
+.step-strip button.active {
   border-color: rgba(227, 93, 69, 0.2);
   background: var(--accent-soft);
   color: var(--accent-strong);
+}
+
+.step-strip button.done {
+  border-color: rgba(116, 220, 188, 0.5);
+  color: var(--text-primary);
 }
 
 .timeline-list,
@@ -2227,11 +2233,11 @@ h2 {
   box-shadow: 0 12px 26px rgba(24, 96, 144, 0.07);
 }
 
-.editor-page .step-strip span {
+.editor-page .step-strip button {
   border-radius: 14px;
 }
 
-.editor-page .step-strip span.active {
+.editor-page .step-strip button.active {
   background: var(--accent);
   color: #ffffff;
   box-shadow: 0 10px 18px rgba(25, 141, 232, 0.16);
@@ -2409,6 +2415,48 @@ h2 {
 .editor-tools {
   display: grid;
   gap: 14px;
+}
+
+.wizard-head,
+.wizard-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.wizard-head {
+  padding: 12px 14px;
+  border: 1px solid rgba(25, 141, 232, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.wizard-head span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.wizard-head strong {
+  color: var(--accent-strong);
+  font-size: 17px;
+}
+
+.wizard-actions {
+  position: sticky;
+  bottom: 10px;
+  z-index: 5;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 18px 40px rgba(24, 96, 144, 0.14);
+  backdrop-filter: blur(12px);
+}
+
+.wizard-actions button {
+  flex: 1;
 }
 
 .editor-tools .section-block {
@@ -2705,7 +2753,7 @@ summary:focus-visible {
   }
 
   .step-strip {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .timeline-summary {

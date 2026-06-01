@@ -74,6 +74,11 @@ const selectedDecoration = computed(() => (diary.value?.decorations ?? []).find(
 const repairTargetSticker = computed(() => diary.value?.stickers.find((sticker) => sticker.id === repairTargetStickerId.value));
 const isBusy = computed(() => selectedSticker.value?.status === "processing");
 const hasSelection = computed(() => Boolean(selectedSticker.value?.selection));
+const hasProcessedSubject = computed(() => {
+  const sticker = selectedSticker.value;
+  if (!sticker?.selection) return false;
+  return Boolean(sticker.fileUrl && sticker.fileUrl !== (sticker.sourceImageUrl ?? sticker.originalFileUrl));
+});
 const canvasClass = computed(() => `bg-${form.background}`);
 const cardImageNeedsRepair = computed(() => Boolean(diary.value?.cardImageUrl && (brokenCardImage.value || isVolatileImageUrl(diary.value.cardImageUrl))));
 const isRepairing = computed(() => Boolean(repairTargetSticker.value || repairingCardImage.value));
@@ -97,9 +102,25 @@ const stickerHealthIssues = computed(() => {
 const selectedStickerNeedsRepair = computed(() => Boolean(selectedSticker.value && stickerNeedsRepair(selectedSticker.value)));
 const currentStep = computed(() => {
   if (!diary.value?.stickers.length) return 1;
-  if (!hasSelection.value) return 2;
-  if (!form.body) return 3;
-  return 4;
+  if (!hasProcessedSubject.value) return 2;
+  if (!form.body) return 5;
+  return 5;
+});
+const activeEditorStep = ref(1);
+const editorSteps = [
+  { id: 1, label: "加照片" },
+  { id: 2, label: "选主体" },
+  { id: 3, label: "选风格" },
+  { id: 4, label: "排版" },
+  { id: 5, label: "保存" }
+];
+const activeStepTitle = computed(() => editorSteps.find((step) => step.id === activeEditorStep.value)?.label ?? "编辑");
+const canGoNextStep = computed(() => {
+  if (activeEditorStep.value === 1) return Boolean(diary.value?.stickers.length);
+  if (activeEditorStep.value === 2) return hasProcessedSubject.value;
+  if (activeEditorStep.value === 3) return Boolean(selectedSticker.value?.variant);
+  if (activeEditorStep.value === 4) return true;
+  return false;
 });
 
 const form = reactive({
@@ -885,6 +906,24 @@ async function endDecorationDrag() {
   });
 }
 
+function nextEditorStep() {
+  if (activeEditorStep.value === 1 && !diary.value?.stickers.length) {
+    ui.showToast("先添加一张照片", "warning");
+    return;
+  }
+  if (activeEditorStep.value === 2 && !hasProcessedSubject.value) {
+    ui.showToast(hasSelection.value ? "先生成抠图" : "先选择主体", "warning");
+    return;
+  }
+  if (activeEditorStep.value < editorSteps.length) {
+    activeEditorStep.value += 1;
+  }
+}
+
+function previousEditorStep() {
+  activeEditorStep.value = Math.max(1, activeEditorStep.value - 1);
+}
+
 async function setVariant(variant: StickerVariant) {
   if (!diary.value || !selectedSticker.value || isBusy.value) return;
   const stickerId = selectedSticker.value.id;
@@ -1438,10 +1477,9 @@ async function save(status: "draft" | "done" = "draft") {
     </div>
 
     <div class="step-strip">
-      <span :class="{ active: currentStep >= 1 }">1 加照片</span>
-      <span :class="{ active: currentStep >= 2 }">2 选主体</span>
-      <span :class="{ active: currentStep >= 3 }">3 写日记</span>
-      <span :class="{ active: currentStep >= 4 }">4 保存</span>
+      <button v-for="step in editorSteps" :key="step.id" type="button" :class="{ active: activeEditorStep === step.id, done: currentStep > step.id }" @click="activeEditorStep = step.id">
+        {{ step.id }} {{ step.label }}
+      </button>
     </div>
 
     <section class="editor-layout">
@@ -1542,7 +1580,12 @@ async function save(status: "draft" | "done" = "draft") {
       </div>
 
       <div class="editor-tools">
-        <section class="section-block compact-block">
+        <div class="wizard-head">
+          <span>第 {{ activeEditorStep }} 步</span>
+          <strong>{{ activeStepTitle }}</strong>
+        </div>
+
+        <section v-if="activeEditorStep === 1" class="section-block compact-block">
           <div class="section-heading">
             <h2>照片贴纸</h2>
             <span>{{ diary.stickers.length }} 个</span>
@@ -1619,7 +1662,7 @@ async function save(status: "draft" | "done" = "draft") {
           <p class="subtle-copy">{{ aiNotice }}</p>
         </section>
 
-        <section class="section-block compact-block">
+        <section v-if="activeEditorStep === 2" class="section-block compact-block">
           <div class="section-heading">
             <h2>选择主体</h2>
             <span>{{ selectedSticker?.selection?.mode === "point" ? "点选" : selectedSticker?.selection?.mode === "box" ? "框选" : "未选择" }}</span>
@@ -1659,7 +1702,7 @@ async function save(status: "draft" | "done" = "draft") {
           <p v-if="selectedSticker?.errorMessage" class="error-copy">{{ selectedSticker.errorMessage }}</p>
         </section>
 
-        <section class="section-block compact-block">
+        <section v-if="activeEditorStep === 3" class="section-block compact-block">
           <div class="section-heading">
             <h2>贴纸版本</h2>
             <span>{{ selectedSticker?.variant ?? "未选择" }}</span>
@@ -1671,7 +1714,7 @@ async function save(status: "draft" | "done" = "draft") {
           </div>
         </section>
 
-        <section class="section-block compact-block">
+        <section v-if="activeEditorStep === 4" class="section-block compact-block">
           <div class="section-heading">
             <h2>自动排版</h2>
             <span>一键整理</span>
@@ -1683,7 +1726,7 @@ async function save(status: "draft" | "done" = "draft") {
           </div>
         </section>
 
-        <section class="section-block compact-block">
+        <section v-if="activeEditorStep === 4" class="section-block compact-block">
           <div class="section-heading">
             <h2>装饰贴纸</h2>
             <span>{{ (diary.decorations ?? []).length }} 个</span>
@@ -1709,7 +1752,7 @@ async function save(status: "draft" | "done" = "draft") {
           </div>
         </section>
 
-        <section class="section-block compact-block">
+        <section v-if="activeEditorStep === 4" class="section-block compact-block">
           <div class="section-heading">
             <h2>画笔涂鸦</h2>
             <span>{{ diary.doodles?.length ?? 0 }} 笔</span>
@@ -1731,7 +1774,7 @@ async function save(status: "draft" | "done" = "draft") {
           </div>
         </section>
 
-        <section class="section-block compact-block">
+        <section v-if="activeEditorStep === 4" class="section-block compact-block">
           <div class="section-heading">
             <h2>调整贴纸</h2>
             <span>{{ selectedSticker ? "已选中" : "未选择" }}</span>
@@ -1752,7 +1795,7 @@ async function save(status: "draft" | "done" = "draft") {
           </div>
         </section>
 
-        <section class="section-block compact-block">
+        <section v-if="activeEditorStep === 5" class="section-block compact-block">
           <div class="section-heading">
             <h2>日记信息</h2>
             <span>轻微润色</span>
@@ -1777,6 +1820,12 @@ async function save(status: "draft" | "done" = "draft") {
             <button class="primary-action" type="button" :disabled="savingDiary" @click="save('done')">{{ savingDiary ? "保存中" : "完成保存" }}</button>
           </div>
         </section>
+
+        <div class="wizard-actions">
+          <button class="secondary-action" type="button" :disabled="activeEditorStep === 1" @click="previousEditorStep">上一步</button>
+          <button v-if="activeEditorStep < editorSteps.length" class="primary-action" type="button" :disabled="isBusy || !canGoNextStep" @click="nextEditorStep">下一步</button>
+          <button v-else class="primary-action" type="button" :disabled="savingDiary" @click="save('done')">{{ savingDiary ? "保存中" : "完成保存" }}</button>
+        </div>
       </div>
     </section>
   </section>
