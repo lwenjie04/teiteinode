@@ -273,6 +273,7 @@ function localVariantFilter(variant: StickerVariant) {
   const filters: Record<StickerVariant, string> = {
     原始抠图: "none",
     白边贴纸: "saturate(1.08) contrast(1.04)",
+    旅行插画版: "saturate(1.35) contrast(1.22) brightness(1.08)",
     可爱漫画版: "saturate(1.65) contrast(1.22) brightness(1.06)",
     手绘插画版: "sepia(0.18) saturate(1.25) contrast(0.95) brightness(1.08)",
     黑白线稿版: "grayscale(1) contrast(1.75) brightness(1.12)"
@@ -281,6 +282,14 @@ function localVariantFilter(variant: StickerVariant) {
 }
 
 function drawLocalVariantDecoration(context: CanvasRenderingContext2D, width: number, height: number, variant: StickerVariant) {
+  if (variant === "旅行插画版") {
+    context.save();
+    context.globalCompositeOperation = "source-atop";
+    context.fillStyle = "rgba(25, 141, 232, 0.08)";
+    context.fillRect(0, 0, width, height);
+    context.restore();
+  }
+
   if (variant === "可爱漫画版") {
     context.save();
     context.globalCompositeOperation = "source-atop";
@@ -317,7 +326,7 @@ async function createLocalVariantSticker(sourceUrl: string, variant: StickerVari
   if (variant === "原始抠图") return sourceUrl;
   const image = await loadImageFromUrl(sourceUrl);
   const maxSide = 900;
-  const padding = variant === "白边贴纸" ? 54 : 28;
+  const padding = variant === "白边贴纸" || variant === "旅行插画版" ? 54 : 28;
   const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
   const imageWidth = Math.max(1, Math.round(image.naturalWidth * scale));
   const imageHeight = Math.max(1, Math.round(image.naturalHeight * scale));
@@ -327,7 +336,7 @@ async function createLocalVariantSticker(sourceUrl: string, variant: StickerVari
   const context = canvas.getContext("2d");
   if (!context) throw new Error("画布创建失败");
 
-  if (variant === "白边贴纸") {
+  if (variant === "白边贴纸" || variant === "旅行插画版") {
     context.fillStyle = "#ffffff";
     context.shadowColor = "rgba(38, 52, 71, 0.16)";
     context.shadowBlur = 0;
@@ -342,10 +351,10 @@ async function createLocalVariantSticker(sourceUrl: string, variant: StickerVari
   context.filter = "none";
   drawLocalVariantDecoration(context, canvas.width, canvas.height, variant);
 
-  if (variant === "可爱漫画版" || variant === "黑白线稿版") {
+  if (variant === "旅行插画版" || variant === "可爱漫画版" || variant === "黑白线稿版") {
     context.save();
-    context.strokeStyle = variant === "可爱漫画版" ? "#263447" : "#111111";
-    context.lineWidth = variant === "可爱漫画版" ? 8 : 5;
+    context.strokeStyle = variant === "黑白线稿版" ? "#111111" : "#263447";
+    context.lineWidth = variant === "黑白线稿版" ? 5 : 8;
     context.lineJoin = "round";
     context.strokeRect(padding - 4, padding - 4, imageWidth + 8, imageHeight + 8);
     context.restore();

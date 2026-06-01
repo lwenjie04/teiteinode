@@ -29,7 +29,7 @@ export const defaultTags = [
 export const writingStyles = ["可爱活泼", "文艺感", "吐槽幽默"] as const;
 export const diaryLengths = ["一句话", "一小段", "两三段"] as const;
 export const backgrounds = ["牛皮纸", "横线纸", "拍立得", "柔和纯色", "透明"] as const;
-export const stickerVariants = ["原始抠图", "白边贴纸", "可爱漫画版", "手绘插画版", "黑白线稿版"] as const;
+export const stickerVariants = ["原始抠图", "白边贴纸", "旅行插画版", "可爱漫画版", "手绘插画版", "黑白线稿版"] as const;
 
 export type Mood = (typeof moods)[number];
 export type DefaultTag = (typeof defaultTags)[number];

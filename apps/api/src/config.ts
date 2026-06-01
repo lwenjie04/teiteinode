@@ -10,7 +10,8 @@ const envSchema = z.object({
   AI_PROVIDER: z.string().optional(),
   AI_API_KEY: z.string().optional(),
   AI_BASE_URL: z.string().url().default("https://api.openai.com/v1"),
-  AI_MODEL: z.string().default("gpt-4.1-mini")
+  AI_MODEL: z.string().default("gpt-4.1-mini"),
+  AI_IMAGE_MODEL: z.string().default("gpt-image-1")
 });
 
 export const config = envSchema.parse(process.env);

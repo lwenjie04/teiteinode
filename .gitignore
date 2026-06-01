@@ -14,3 +14,5 @@ docs/screenshots/*-profile*/
 apps/android/.gradle/
 apps/android/.idea/
 apps/android/local.properties
+apps/android/build/
+apps/android/app/build/

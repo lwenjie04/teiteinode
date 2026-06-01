@@ -25,7 +25,7 @@ const segmentSchema = z.object({
 
 const stylizeSchema = z.object({
   imageUrl: z.string().min(1),
-  variant: z.enum(["原始抠图", "白边贴纸", "可爱漫画版", "手绘插画版", "黑白线稿版"])
+  variant: z.enum(["原始抠图", "白边贴纸", "旅行插画版", "可爱漫画版", "手绘插画版", "黑白线稿版"])
 });
 
 const generateDiarySchema = z.object({
@@ -49,9 +49,19 @@ interface ChatCompletionResponse {
   }>;
 }
 
+interface ImageEditResponse {
+  data?: Array<{
+    b64_json?: string;
+  }>;
+}
+
 function canUseRemoteAi() {
   if (!config.AI_PROVIDER || !config.AI_API_KEY) return false;
   return ["openai", "openai-compatible"].includes(config.AI_PROVIDER.toLowerCase());
+}
+
+function canUseOpenAiImageEdit() {
+  return config.AI_PROVIDER?.toLowerCase() === "openai" && Boolean(config.AI_API_KEY);
 }
 
 function buildRemoteDiaryPrompt(input: GenerateDiaryInput) {
@@ -110,6 +120,71 @@ async function generateDiaryWithChatCompletion(input: GenerateDiaryInput) {
   };
 }
 
+function dataUrlToBlob(dataUrl: string) {
+  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) throw new Error("Invalid data URL");
+  const bytes = Buffer.from(match[2], "base64");
+  return new Blob([bytes], { type: match[1] });
+}
+
+async function imageUrlToBlob(imageUrl: string) {
+  if (imageUrl.startsWith("data:")) return dataUrlToBlob(imageUrl);
+
+  const response = await fetch(imageUrl, { signal: AbortSignal.timeout(12000) });
+  if (!response.ok) throw new Error(`Image fetch failed: ${response.status}`);
+  return response.blob();
+}
+
+function buildStickerEditPrompt(variant: StickerVariant) {
+  const styleMap: Record<StickerVariant, string> = {
+    原始抠图: "cut out the main subject cleanly, preserve the original photographic look",
+    白边贴纸: "make a clean die-cut sticker with a thick white border and soft drop shadow",
+    旅行插画版: "redraw the main subject as a travel journal illustration sticker, clean black line art, soft flat colors, thick white border, subtle shadow, like a souvenir sticker",
+    可爱漫画版: "redraw the main subject as a cute comic sticker, bold outline, playful colors, thick white border, subtle shadow",
+    手绘插画版: "redraw the main subject as a hand-drawn editorial illustration sticker, gentle textured lines, soft colors, thick white border",
+    黑白线稿版: "redraw the main subject as a black and white line-art sticker, clean ink lines, thick white border"
+  };
+
+  return [
+    styleMap[variant],
+    "Use the input image only as reference.",
+    "Isolate the main subject or selected object.",
+    "Remove the original background.",
+    "Return a single centered sticker on transparent background.",
+    "No UI, no watermark, no extra text unless the original subject contains essential visible text."
+  ].join(" ");
+}
+
+async function stylizeStickerWithOpenAi(imageUrl: string, variant: StickerVariant) {
+  const image = await imageUrlToBlob(imageUrl);
+  const formData = new FormData();
+  formData.append("model", config.AI_IMAGE_MODEL);
+  formData.append("image", image, "source.png");
+  formData.append("prompt", buildStickerEditPrompt(variant));
+  formData.append("size", "1024x1024");
+  formData.append("background", "transparent");
+  formData.append("quality", "medium");
+
+  const response = await fetch(`${config.AI_BASE_URL.replace(/\/$/, "")}/images/edits`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.AI_API_KEY}`
+    },
+    body: formData,
+    signal: AbortSignal.timeout(60000)
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`AI image edit failed: ${response.status} ${detail.slice(0, 160)}`);
+  }
+
+  const data = (await response.json()) as ImageEditResponse;
+  const imageBase64 = data.data?.[0]?.b64_json;
+  if (!imageBase64) throw new Error("AI image edit response did not include image data");
+  return `data:image/png;base64,${imageBase64}`;
+}
+
 function buildDiaryText(input: z.infer<typeof generateDiarySchema>) {
   const place = input.location?.trim() || "今天";
   const hint = input.prompt?.trim() || "这个小片刻";
@@ -158,6 +233,20 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
 
   app.post("/stylize", { preHandler: app.authenticate }, async (request) => {
     const body = stylizeSchema.parse(request.body);
+
+    if (canUseOpenAiImageEdit()) {
+      try {
+        const stickerUrl = await stylizeStickerWithOpenAi(body.imageUrl, body.variant as StickerVariant);
+        return {
+          status: "completed",
+          stickerUrl,
+          variant: body.variant as StickerVariant,
+          message: "AI 已生成新的风格贴纸。"
+        };
+      } catch (error) {
+        request.log.warn({ error }, "AI sticker stylization failed, falling back to local result");
+      }
+    }
 
     return {
       status: "completed",
