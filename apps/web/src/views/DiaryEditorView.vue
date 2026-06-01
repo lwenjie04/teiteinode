@@ -662,8 +662,15 @@ async function startStickerRepair(stickerId: string) {
   repairTargetStickerId.value = stickerId;
   repairingCardImage.value = false;
   assetPanelOpen.value = true;
+  activeEditorStep.value = 1;
   aiNotice.value = "选择一张素材来替换当前问题贴纸，原来的排版位置会保留。";
   await refreshAssetLibrary(true);
+}
+
+async function repairSelectedStickerNow() {
+  if (!selectedSticker.value) return;
+  await startStickerRepair(selectedSticker.value.id);
+  fileInput.value?.click();
 }
 
 function cancelRepairMode() {
@@ -1769,7 +1776,11 @@ async function save(status: "draft" | "done" = "draft") {
               <span v-if="selectedSticker.selection?.mode === 'box'" class="selection-box" :style="{ left: `${selectedSticker.selection.x}%`, top: `${selectedSticker.selection.y}%`, width: `${selectedSticker.selection.width}%`, height: `${selectedSticker.selection.height}%` }" />
               <span v-if="draftBox" class="selection-box drafting" :style="{ left: `${draftBox.x}%`, top: `${draftBox.y}%`, width: `${draftBox.width}%`, height: `${draftBox.height}%` }" />
               <div v-if="isBusy" class="busy-overlay">处理中，请稍等</div>
-              <div v-else-if="selectedStickerNeedsRepair" class="busy-overlay repair-overlay">这张贴纸需要重新选择图片</div>
+              <div v-else-if="selectedStickerNeedsRepair" class="busy-overlay repair-overlay">
+                <strong>这张图源不可用</strong>
+                <span>换一张原图后才能继续抠图</span>
+                <button type="button" @click.stop="repairSelectedStickerNow">重新选择</button>
+              </div>
             </div>
             <div v-else class="empty-canvas"><span>先选择一个贴纸</span></div>
           </div>
