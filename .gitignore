@@ -11,3 +11,6 @@ coverage
 docs/screenshots/*-profile*/
 .DS_Store
 *.log
+apps/android/.gradle/
+apps/android/.idea/
+apps/android/local.properties
