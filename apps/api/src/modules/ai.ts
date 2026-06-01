@@ -615,7 +615,7 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
     };
   });
 
-  app.post("/segment", { preHandler: app.authenticate }, async (request) => {
+  app.post("/segment", { bodyLimit: 16 * 1024 * 1024 }, async (request) => {
     const body = segmentSchema.parse(request.body);
 
     const stickerUrl = await createLocalSelectionStickerUrl(body.imageUrl, body.selection);
@@ -626,7 +626,7 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
     };
   });
 
-  app.post("/stylize", { preHandler: app.authenticate }, async (request) => {
+  app.post("/stylize", { bodyLimit: 16 * 1024 * 1024 }, async (request) => {
     const body = stylizeSchema.parse(request.body);
 
     try {

@@ -156,30 +156,31 @@ export async function generateDiary(token: string, payload: Record<string, unkno
   });
 }
 
-export async function segmentSubject(token: string, payload: SegmentRequest) {
+function authJsonHeaders(token?: string | null) {
+  return {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    "Content-Type": "application/json"
+  };
+}
+
+export async function segmentSubject(token: string | null | undefined, payload: SegmentRequest) {
   return fetchJson<SegmentResponse>(
     `${API_PREFIX}/ai/segment`,
     {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json"
-      },
+      headers: authJsonHeaders(token),
       body: JSON.stringify(payload)
     },
     30000
   );
 }
 
-export async function stylizeSticker(token: string, payload: StylizeRequest) {
+export async function stylizeSticker(token: string | null | undefined, payload: StylizeRequest) {
   return fetchJson<StylizeResponse>(
     `${API_PREFIX}/ai/stylize`,
     {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json"
-      },
+      headers: authJsonHeaders(token),
       body: JSON.stringify(payload)
     },
     30000

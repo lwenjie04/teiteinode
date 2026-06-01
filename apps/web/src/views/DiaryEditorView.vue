@@ -619,12 +619,20 @@ function canSendImageUrlToBackend(url?: string) {
   return Boolean(url && !url.startsWith("data:") && !url.startsWith("blob:"));
 }
 
+function canSendLocalImageToBackend(url?: string) {
+  return Boolean(url && !url.startsWith("blob:"));
+}
+
 function backendImageUrlFor(sticker: Sticker, fallbackUrl: string) {
   if (canSendImageUrlToBackend(sticker.remoteImageUrl)) return sticker.remoteImageUrl;
   if (canSendImageUrlToBackend(sticker.sourceImageUrl)) return sticker.sourceImageUrl;
   if (canSendImageUrlToBackend(sticker.originalFileUrl)) return sticker.originalFileUrl;
   if (canSendImageUrlToBackend(fallbackUrl)) return fallbackUrl;
   return "";
+}
+
+function backendSourceFor(sticker: Sticker, localSourceUrl: string) {
+  return backendImageUrlFor(sticker, localSourceUrl) || (canSendLocalImageToBackend(localSourceUrl) ? localSourceUrl : "");
 }
 
 function stickerHasVolatileUrl(sticker: Sticker) {
@@ -984,23 +992,27 @@ async function setVariant(variant: StickerVariant) {
   const stickerId = selectedSticker.value.id;
   const selection = selectedSticker.value.selection;
   const localSourceUrl = selection ? selectedSticker.value.sourceImageUrl ?? selectedSticker.value.originalFileUrl ?? selectedSticker.value.fileUrl : selectedSticker.value.originalFileUrl ?? selectedSticker.value.fileUrl;
-  const remoteSourceUrl = backendImageUrlFor(selectedSticker.value, localSourceUrl);
+  const backendSourceUrl = backendSourceFor(selectedSticker.value, localSourceUrl);
   await store.updateSticker(diary.value.id, stickerId, { variant, status: "processing", errorMessage: undefined });
   let backendError: unknown;
   try {
     let nextUrl = "";
     let message = "";
-    if (auth.token && remoteSourceUrl) {
+    let usedBackend = false;
+    if (backendSourceUrl) {
       try {
-        const result = await stylizeSticker(auth.token, { imageUrl: remoteSourceUrl, variant, selection });
+        const result = await stylizeSticker(auth.token, { imageUrl: backendSourceUrl, variant, selection });
         nextUrl = result.stickerUrl;
         message = result.message;
+        usedBackend = true;
       } catch (error) {
         backendError = error;
-        const uploadedUrl = await uploadStickerSourceForBackend(localSourceUrl, stickerId);
-        const result = await stylizeSticker(auth.token, { imageUrl: uploadedUrl, variant, selection });
+        if (!auth.token) throw error;
+        const retrySourceUrl = canSendLocalImageToBackend(localSourceUrl) ? localSourceUrl : await uploadStickerSourceForBackend(localSourceUrl, stickerId);
+        const result = await stylizeSticker(auth.token, { imageUrl: retrySourceUrl, variant, selection });
         nextUrl = result.stickerUrl;
         message = result.message;
+        usedBackend = true;
       }
     } else {
       if (auth.token) {
@@ -1023,7 +1035,7 @@ async function setVariant(variant: StickerVariant) {
     }
     await store.updateSticker(diary.value.id, stickerId, { fileUrl: nextUrl, variant, status: "ready" });
     aiNotice.value = message;
-    ui.showToast(auth.token ? "后端已生成风格贴纸" : "已生成本地风格贴纸", "success");
+    ui.showToast(usedBackend ? "后端已生成风格贴纸" : "已生成本地风格贴纸", "success");
   } catch (error) {
     const detail = backendError ? `${shortError(backendError)}；重试失败：${shortError(error)}` : shortError(error);
     try {
@@ -1094,23 +1106,27 @@ async function processSubject() {
   const stickerId = selectedSticker.value.id;
   const selection = selectedSticker.value.selection;
   const localSourceUrl = selectedSticker.value.sourceImageUrl ?? selectedSticker.value.fileUrl;
-  const remoteSourceUrl = backendImageUrlFor(selectedSticker.value, localSourceUrl);
+  const backendSourceUrl = backendSourceFor(selectedSticker.value, localSourceUrl);
   await store.updateSticker(diary.value.id, stickerId, { status: "processing", errorMessage: undefined });
   let backendError: unknown;
   try {
     let stickerUrl = "";
     let message = "";
-    if (auth.token && remoteSourceUrl) {
+    let usedBackend = false;
+    if (backendSourceUrl) {
       try {
-        const result = await segmentSubject(auth.token, { imageUrl: remoteSourceUrl, selection });
+        const result = await segmentSubject(auth.token, { imageUrl: backendSourceUrl, selection });
         stickerUrl = result.stickerUrl;
         message = result.message;
+        usedBackend = true;
       } catch (error) {
         backendError = error;
-        const uploadedUrl = await uploadStickerSourceForBackend(localSourceUrl, stickerId);
-        const result = await segmentSubject(auth.token, { imageUrl: uploadedUrl, selection });
+        if (!auth.token) throw error;
+        const retrySourceUrl = canSendLocalImageToBackend(localSourceUrl) ? localSourceUrl : await uploadStickerSourceForBackend(localSourceUrl, stickerId);
+        const result = await segmentSubject(auth.token, { imageUrl: retrySourceUrl, selection });
         stickerUrl = result.stickerUrl;
         message = result.message;
+        usedBackend = true;
       }
     } else {
       if (auth.token) {
@@ -1133,7 +1149,7 @@ async function processSubject() {
     }
     await store.updateSticker(diary.value.id, stickerId, { fileUrl: stickerUrl, originalFileUrl: stickerUrl, status: "ready" });
     aiNotice.value = message;
-    ui.showToast(auth.token ? "后端已生成贴纸" : "已生成本地贴纸", "success");
+    ui.showToast(usedBackend ? "后端已生成贴纸" : "已生成本地贴纸", "success");
   } catch (error) {
     const detail = backendError ? `${shortError(backendError)}；重试失败：${shortError(error)}` : shortError(error);
     try {
