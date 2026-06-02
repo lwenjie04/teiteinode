@@ -79,7 +79,7 @@ function normalizeDiary(diary: Diary): Diary {
             ...sticker,
             fileUrl: sticker.sourceImageUrl ?? sticker.fileUrl,
             status: "ready" as const,
-            errorMessage: "上次处理没有完成，已自动恢复原贴纸。"
+            errorMessage: "上次处理被中断，已恢复到原贴纸。重新生成后会自动清除这条提示。"
           }
         : sticker
     )

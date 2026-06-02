@@ -1033,7 +1033,7 @@ async function setVariant(variant: StickerVariant) {
         message = `已在本地生成「${variant}」。`;
       }
     }
-    await store.updateSticker(diary.value.id, stickerId, { fileUrl: nextUrl, variant, status: "ready" });
+    await store.updateSticker(diary.value.id, stickerId, { fileUrl: nextUrl, variant, status: "ready", errorMessage: undefined });
     aiNotice.value = message;
     ui.showToast(usedBackend ? "后端已生成风格贴纸" : "已生成本地风格贴纸", "success");
   } catch (error) {
@@ -1147,7 +1147,7 @@ async function processSubject() {
         message = selection.mode === "box" ? "已用本地算法清理边缘背景并生成贴纸。" : "已围绕点选位置生成本地贴纸。";
       }
     }
-    await store.updateSticker(diary.value.id, stickerId, { fileUrl: stickerUrl, originalFileUrl: stickerUrl, status: "ready" });
+    await store.updateSticker(diary.value.id, stickerId, { fileUrl: stickerUrl, originalFileUrl: stickerUrl, status: "ready", errorMessage: undefined });
     aiNotice.value = message;
     ui.showToast(usedBackend ? "后端已生成贴纸" : "已生成本地贴纸", "success");
   } catch (error) {
