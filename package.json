@@ -18,6 +18,7 @@
     "build:clients": "npm run build:web && npm run build:pwa && npm run build:android && npm run build:mp-wechat",
     "typecheck": "npm --workspace @tietie/shared run build && npm --workspaces run typecheck",
     "lint": "npm --workspaces run lint",
+    "check:api": "node scripts/check-api.js",
     "check:stickers": "node scripts/check-sticker-styles.js",
     "deploy:config": "docker compose -p tietie --env-file deploy/.env -f docker-compose.prod.yml config",
     "deploy:up": "docker compose -p tietie --env-file deploy/.env -f docker-compose.prod.yml up -d --build",
