@@ -479,12 +479,38 @@ async function createStickerStyleSelfTestImages() {
   const dataUrl = `data:image/png;base64,${source.toString("base64")}`;
   const selection: SubjectSelection = { mode: "box", x: 6, y: 4, width: 88, height: 88 };
   return Promise.all(
-    stickerStyleOrder.map(async (variant) => ({
-      variant,
-      status: "completed" as const,
-      stickerUrl: await createLocalVariantStickerUrl(dataUrl, variant, selection)
-    }))
+    stickerStyleOrder.map(async (variant) => {
+      const stickerUrl = await createLocalVariantStickerUrl(dataUrl, variant, selection);
+      const diagnostics = await inspectGeneratedSticker(stickerUrl);
+      return {
+        variant,
+        status: "completed" as const,
+        stickerUrl,
+        diagnostics,
+        ok: diagnostics.transparentRatio > 0.6 && diagnostics.opaquePixels > 1000
+      };
+    })
   );
+}
+
+async function inspectGeneratedSticker(stickerUrl: string) {
+  const buffer = await imageUrlToBuffer(stickerUrl);
+  const image = sharp(buffer).ensureAlpha();
+  const metadata = await image.metadata();
+  const raw = await image.raw().toBuffer();
+  let transparentPixels = 0;
+  let opaquePixels = 0;
+  for (let index = 3; index < raw.length; index += 4) {
+    if (raw[index] < 8) transparentPixels += 1;
+    if (raw[index] > 245) opaquePixels += 1;
+  }
+  const pixelCount = raw.length / 4;
+  return {
+    width: metadata.width ?? 0,
+    height: metadata.height ?? 0,
+    transparentRatio: Math.round((transparentPixels / pixelCount) * 1000) / 1000,
+    opaquePixels
+  };
 }
 
 function buildStickerEditPrompt(variant: StickerVariant) {
@@ -635,7 +661,7 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
   app.get("/sticker-style-self-test", async () => {
     const items = await createStickerStyleSelfTestImages();
     return {
-      ok: true,
+      ok: items.every((item) => item.ok),
       status: "completed",
       items,
       message: "六种贴纸风格服务可用。"
