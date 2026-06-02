@@ -397,11 +397,11 @@ type StickerStyleModule = {
 };
 
 async function renderWhitePhotoStyle(subjectPng: Buffer) {
-  return sharp(subjectPng).ensureAlpha().modulate({ saturation: 1.08 }).linear(1.04, -4).png().toBuffer();
+  return sharp(subjectPng).ensureAlpha().modulate({ saturation: 1.12, brightness: 1.04 }).linear(1.08, -6).png().toBuffer();
 }
 
 async function renderTravelIllustrationStyle(subjectPng: Buffer) {
-  return sharp(subjectPng).ensureAlpha().modulate({ saturation: 1.35, brightness: 1.08 }).linear(1.12, -10).tint("#d7f0ff").png().toBuffer();
+  return sharp(subjectPng).ensureAlpha().modulate({ saturation: 1.45, brightness: 1.08 }).linear(1.18, -12).png().toBuffer();
 }
 
 async function renderPixelStyle(subjectPng: Buffer) {
@@ -418,25 +418,19 @@ async function renderPixelStyle(subjectPng: Buffer) {
 }
 
 async function renderLineSketchStyle(subjectPng: Buffer) {
-  return sharp(subjectPng).ensureAlpha().grayscale().linear(1.7, -24).tint("#263447").png().toBuffer();
+  return sharp(subjectPng).ensureAlpha().grayscale().linear(2.05, -46).tint("#263447").png().toBuffer();
 }
 
 async function renderCuteComicStyle(subjectPng: Buffer) {
-  return sharp(subjectPng).ensureAlpha().modulate({ saturation: 1.55, brightness: 1.06 }).linear(1.18, -12).png().toBuffer();
+  return sharp(subjectPng).ensureAlpha().modulate({ saturation: 1.75, brightness: 1.08 }).linear(1.22, -14).png().toBuffer();
 }
 
 async function renderRetroStampStyle(subjectPng: Buffer) {
-  const metadata = await sharp(subjectPng).metadata();
-  const width = metadata.width ?? 1;
-  const height = metadata.height ?? 1;
-  const grain = Buffer.from(
-    `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100%" height="100%" filter="url(#n)" opacity="0.08"/></svg>`
-  );
   return sharp(subjectPng)
     .ensureAlpha()
-    .modulate({ saturation: 0.78, brightness: 1.08 })
+    .modulate({ saturation: 0.86, brightness: 1.08 })
     .tint("#f3d49b")
-    .composite([{ input: grain, blend: "overlay" }])
+    .linear(1.08, -8)
     .png()
     .toBuffer();
 }
@@ -449,6 +443,8 @@ const stickerStyleModules: Record<StickerVariant, StickerStyleModule> = {
   可爱漫画风: { padding: 42, render: renderCuteComicStyle },
   复古邮票风: { padding: 62, render: renderRetroStampStyle }
 };
+
+const stickerStyleOrder = Object.keys(stickerStyleModules) as StickerVariant[];
 
 async function createLocalVariantStickerUrl(sourceUrl: string, variant: StickerVariant, selection?: SubjectSelection) {
   const subject = await createCutoutSubjectPng(sourceUrl, selection);
@@ -468,6 +464,27 @@ async function createStickerSelfTestImage() {
   const dataUrl = `data:image/png;base64,${source.toString("base64")}`;
   const selection: SubjectSelection = { mode: "box", x: 8, y: 8, width: 84, height: 84 };
   return createLocalSelectionStickerUrl(dataUrl, selection);
+}
+
+async function createStickerStyleSelfTestImages() {
+  const svg = `<svg width="420" height="320" xmlns="http://www.w3.org/2000/svg">
+    <rect width="420" height="320" fill="#eaf7ff"/>
+    <path d="M94 168 C136 236 258 236 326 126 C282 160 230 144 196 94 C152 126 134 150 94 168Z" fill="#5968f2"/>
+    <circle cx="242" cy="142" r="13" fill="#ffffff"/>
+    <circle cx="246" cy="142" r="5" fill="#263447"/>
+    <path d="M316 86 C356 64 384 66 396 92 C370 96 350 112 332 142Z" fill="#5968f2"/>
+    <path d="M70 78 L112 52 L150 86 L118 122Z" fill="#ffcf56"/>
+  </svg>`;
+  const source = await sharp(Buffer.from(svg)).png().toBuffer();
+  const dataUrl = `data:image/png;base64,${source.toString("base64")}`;
+  const selection: SubjectSelection = { mode: "box", x: 6, y: 4, width: 88, height: 88 };
+  return Promise.all(
+    stickerStyleOrder.map(async (variant) => ({
+      variant,
+      status: "completed" as const,
+      stickerUrl: await createLocalVariantStickerUrl(dataUrl, variant, selection)
+    }))
+  );
 }
 
 function buildStickerEditPrompt(variant: StickerVariant) {
@@ -612,6 +629,16 @@ export const aiRoutes: FastifyPluginAsync = async (app) => {
       status: "completed",
       stickerUrl,
       message: "贴纸抠图服务可用。"
+    };
+  });
+
+  app.get("/sticker-style-self-test", async () => {
+    const items = await createStickerStyleSelfTestImages();
+    return {
+      ok: true,
+      status: "completed",
+      items,
+      message: "六种贴纸风格服务可用。"
     };
   });
 
