@@ -28,6 +28,9 @@ const moodCounts = computed(() =>
 );
 
 const maxMoodCount = computed(() => Math.max(...moodCounts.value.map((item) => item.count), 1));
+const moodTimelineDiaries = computed(() =>
+  [...store.diaries].sort((a, b) => (a.date === b.date ? b.lastModifiedAt.localeCompare(a.lastModifiedAt) : b.date.localeCompare(a.date)))
+);
 const wallDiaries = computed(() => store.diaries.filter((diary) => diary.cardImageUrl || diary.stickers.length).slice(0, 18));
 
 function openMood(mood: Mood) {
@@ -74,7 +77,7 @@ function openDiary(diary: Diary) {
     </div>
 
     <div v-else-if="view === 'line'" class="mood-line">
-      <article v-for="diary in store.diaries" :key="diary.id" class="mood-line-item" @click="openDiary(diary)">
+      <article v-for="diary in moodTimelineDiaries" :key="diary.id" class="mood-line-item" @click="openDiary(diary)">
         <span>{{ diary.date }}</span>
         <strong>{{ diary.mood }}</strong>
       </article>
