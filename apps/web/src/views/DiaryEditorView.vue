@@ -1902,6 +1902,7 @@ async function save(status: "draft" | "done" = "draft") {
             </button>
           </div>
           <div class="hero-actions">
+            <button class="secondary-action" type="button" :disabled="isBusy || !selectedSticker" @click="setVariant(selectedSticker?.variant ?? '白边原图贴纸')">再来一版</button>
             <button class="secondary-action" type="button" :disabled="isBusy || !selectedSticker" @click="addSubjectFromSelectedSource">继续抠同图主体</button>
           </div>
         </section>
