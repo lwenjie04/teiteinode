@@ -18,6 +18,7 @@ const ui = useUiStore();
 const router = useRouter();
 const fileInput = ref<HTMLInputElement | null>(null);
 const cameraInput = ref<HTMLInputElement | null>(null);
+const creatingDraft = ref(false);
 const todayKey = formatLocalDateKey();
 const todayDiaries = computed(() => store.diaries.filter((diary) => diary.date === todayKey));
 const unfinishedDiaries = computed(() => store.diaries.filter((diary) => diary.status !== "done"));
@@ -80,6 +81,8 @@ async function imageSourceFor(file: File): Promise<DraftImageSource> {
 }
 
 async function startDraft(files?: FileList | null) {
+  if (creatingDraft.value) return;
+  creatingDraft.value = true;
   const draft = await store.createDraft({
     writingStyle: settings.values.defaultWritingStyle,
     length: settings.values.defaultDiaryLength,
@@ -105,13 +108,17 @@ async function startDraft(files?: FileList | null) {
     const compressText = compressedCount ? `，已压缩 ${compressedCount} 张大图` : "";
     ui.showToast(auth.token ? `照片已添加，并尝试上传素材${compressText}` : `照片已添加到本地草稿${compressText}`, "success");
   }
-  router.push(`/diaries/${draft.id}/edit`);
+  await router.push(`/diaries/${draft.id}/edit`);
 }
 
 async function handleFiles(event: Event) {
   const input = event.target as HTMLInputElement;
-  await startDraft(input.files);
-  input.value = "";
+  try {
+    await startDraft(input.files);
+  } finally {
+    input.value = "";
+    creatingDraft.value = false;
+  }
 }
 
 function openDiary(id: string, edit = false) {
@@ -144,10 +151,10 @@ function diaryStatusLabel(status: Diary["status"]) {
       <h1>贴贴日记</h1>
       <p class="hero-copy">{{ todayDiaries.length ? `今天已有 ${todayDiaries.length} 篇记录。` : "拍一张照片，写一点今天。" }}</p>
       <div class="hero-actions hero-primary-row">
-        <button class="primary-action hero-main-action" type="button" @click="cameraInput?.click()">拍一张，开始记录</button>
+        <button class="primary-action hero-main-action" type="button" :disabled="creatingDraft" @click="cameraInput?.click()">{{ creatingDraft ? "准备中" : "拍一张，开始记录" }}</button>
       </div>
       <div class="hero-link-row">
-        <button class="link-action" type="button" @click="fileInput?.click()">从相册选</button>
+        <button class="link-action" type="button" :disabled="creatingDraft" @click="fileInput?.click()">从相册选</button>
       </div>
     </div>
 
