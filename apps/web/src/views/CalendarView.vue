@@ -153,6 +153,7 @@ const pendingSyncDiaryIds = computed(() => {
   }
   return ids;
 });
+const pendingSyncCount = computed(() => currentMonthDiaries.value.filter((diary) => pendingSyncDiaryIds.value.has(diary.id)).length);
 
 const topMood = computed(() => {
   const counts = new Map<string, number>();
@@ -186,6 +187,10 @@ const topMood = computed(() => {
       <article>
         <span>草稿</span>
         <strong>{{ draftCount }}</strong>
+      </article>
+      <article>
+        <span>待同步</span>
+        <strong>{{ pendingSyncCount }}</strong>
       </article>
       <article>
         <span>高频心情</span>
