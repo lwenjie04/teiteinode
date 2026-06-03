@@ -50,7 +50,7 @@ const originalPhotoItems = computed(() => {
   if (!diary.value) return [];
   const sources = new Map<string, number>();
   for (const sticker of diary.value.stickers) {
-    const sourceUrl = sticker.sourceImageUrl ?? sticker.remoteImageUrl;
+    const sourceUrl = sticker.originalFileUrl ?? sticker.sourceImageUrl ?? sticker.remoteImageUrl;
     if (!sourceUrl) continue;
     sources.set(sourceUrl, (sources.get(sourceUrl) ?? 0) + 1);
   }
