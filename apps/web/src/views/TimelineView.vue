@@ -126,6 +126,10 @@ function diaryTimelineStatus(diary: Diary) {
   return labels[diary.status];
 }
 
+function diaryNeedsEditing(diary: Diary) {
+  return diary.status !== "done";
+}
+
 function openDiary(id: string, edit = false) {
   router.push(edit ? `/diaries/${id}/edit` : `/diaries/${id}`);
 }
@@ -261,7 +265,7 @@ async function undoDelete() {
     </article>
 
     <div class="timeline-list">
-      <article v-for="diary in filteredDiaries" :key="diary.id" class="diary-row" @click="openDiary(diary.id, diary.status === 'draft')">
+      <article v-for="diary in filteredDiaries" :key="diary.id" class="diary-row" @click="openDiary(diary.id, diaryNeedsEditing(diary))">
         <div class="diary-thumb" :class="[diary.status, { broken: cardImageNeedsRepair(diary) }]">
           <img v-if="diary.cardImageUrl && !brokenCardImageIds.has(diary.id)" :src="diary.cardImageUrl" :alt="`${diary.date} 预览图`" @load="markCardImageLoaded(diary.id)" @error="markCardImageFailed(diary.id)" />
           <span v-else class="thumb-fallback">{{ diary.mood }}</span>
@@ -283,7 +287,7 @@ async function undoDelete() {
               <summary aria-label="更多操作">•••</summary>
               <div class="row-menu-panel">
                 <button v-if="cardImageNeedsRepair(diary)" class="secondary-action compact-action" type="button" @click="openCardImageRepair(diary.id)">修复封面</button>
-                <button v-if="diary.status === 'draft'" class="secondary-action compact-action" type="button" @click="openDiary(diary.id, true)">继续写</button>
+                <button v-if="diaryNeedsEditing(diary)" class="secondary-action compact-action" type="button" @click="openDiary(diary.id, true)">继续处理</button>
                 <button class="text-danger" type="button" @click="deleteDiary(diary.id)">删除</button>
               </div>
             </details>
