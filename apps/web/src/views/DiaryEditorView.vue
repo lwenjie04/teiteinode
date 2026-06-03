@@ -67,6 +67,7 @@ const repairingCardImage = ref(false);
 const brokenCardImage = ref(false);
 const handledRepairRequest = ref("");
 const savingDiary = ref(false);
+const autoProcessingSelectionId = ref("");
 let autosaveTimer = 0;
 
 const diary = computed(() => store.getDiary(String(route.params.id)));
@@ -975,7 +976,7 @@ function nextEditorStep() {
     return;
   }
   if (activeEditorStep.value === 2 && !hasProcessedSubject.value) {
-    ui.showToast(hasSelection.value ? "先生成抠图" : "先选择主体", "warning");
+    ui.showToast(hasSelection.value ? "贴纸还在生成，请稍等" : "先点一下或框出主体", "warning");
     return;
   }
   if (activeEditorStep.value < editorSteps.length) {
@@ -985,6 +986,20 @@ function nextEditorStep() {
 
 function previousEditorStep() {
   activeEditorStep.value = Math.max(1, activeEditorStep.value - 1);
+}
+
+async function processSelectedSubjectAndContinue() {
+  const sticker = selectedSticker.value;
+  if (!sticker?.selection || isBusy.value) return;
+  const selectionKey = JSON.stringify(sticker.selection);
+  const requestKey = `${sticker.id}:${selectionKey}`;
+  if (autoProcessingSelectionId.value === requestKey) return;
+  autoProcessingSelectionId.value = requestKey;
+  try {
+    await processSubject();
+  } finally {
+    autoProcessingSelectionId.value = "";
+  }
 }
 
 async function setVariant(variant: StickerVariant) {
@@ -1035,6 +1050,7 @@ async function setVariant(variant: StickerVariant) {
     }
     await store.updateSticker(diary.value.id, stickerId, { fileUrl: nextUrl, variant, status: "ready", errorMessage: undefined });
     aiNotice.value = message;
+    activeEditorStep.value = Math.max(activeEditorStep.value, 4);
     ui.showToast(usedBackend ? "后端已生成风格贴纸" : "已生成本地风格贴纸", "success");
   } catch (error) {
     const detail = backendError ? `${shortError(backendError)}；重试失败：${shortError(error)}` : shortError(error);
@@ -1066,7 +1082,8 @@ async function handlePreviewClick(event: MouseEvent) {
   const point = relativePoint(event);
   if (!point) return;
   await store.setStickerSelection(diary.value.id, selectedSticker.value.id, { mode: "point", x: point.x, y: point.y });
-  ui.showToast("已标记主体位置", "success");
+  aiNotice.value = "已选中主体，正在生成贴纸。";
+  await processSelectedSubjectAndContinue();
 }
 
 function startBox(event: PointerEvent) {
@@ -1093,7 +1110,8 @@ async function endBox() {
   dragStart.value = null;
   draftBox.value = null;
   await store.setStickerSelection(diary.value.id, selectedSticker.value.id, box);
-  ui.showToast("已框选主体区域", "success");
+  aiNotice.value = "已框选主体，正在生成贴纸。";
+  await processSelectedSubjectAndContinue();
 }
 
 async function processSubject() {
@@ -1149,6 +1167,7 @@ async function processSubject() {
     }
     await store.updateSticker(diary.value.id, stickerId, { fileUrl: stickerUrl, originalFileUrl: stickerUrl, status: "ready", errorMessage: undefined });
     aiNotice.value = message;
+    activeEditorStep.value = Math.max(activeEditorStep.value, 3);
     ui.showToast(usedBackend ? "后端已生成贴纸" : "已生成本地贴纸", "success");
   } catch (error) {
     const detail = backendError ? `${shortError(backendError)}；重试失败：${shortError(error)}` : shortError(error);
@@ -1789,7 +1808,7 @@ async function save(status: "draft" | "done" = "draft") {
         <section v-if="activeEditorStep === 2" class="section-block compact-block">
           <div class="section-heading">
             <h2>选择主体</h2>
-            <span>{{ selectedSticker?.selection?.mode === "point" ? "点选" : selectedSticker?.selection?.mode === "box" ? "框选" : "未选择" }}</span>
+            <span>{{ isBusy ? "自动生成中" : selectedSticker?.selection?.mode === "point" ? "点选后自动生成" : selectedSticker?.selection?.mode === "box" ? "框选后自动生成" : "点一下或框一下" }}</span>
           </div>
 
           <div class="segmented two">
@@ -1822,9 +1841,8 @@ async function save(status: "draft" | "done" = "draft") {
             <div v-else class="empty-canvas"><span>先选择一个贴纸</span></div>
           </div>
 
-          <div class="hero-actions">
-            <button class="secondary-action" type="button" :disabled="isBusy || !selectedSticker" @click="processSubject">{{ isBusy ? "处理中" : "生成抠图" }}</button>
-            <button class="secondary-action" type="button" :disabled="isBusy || !selectedSticker" @click="setVariant(selectedSticker?.variant ?? '白边原图贴纸')">再来一版</button>
+          <div v-if="selectedSticker?.errorMessage" class="hero-actions">
+            <button class="secondary-action" type="button" :disabled="isBusy || !selectedSticker" @click="processSelectedSubjectAndContinue">{{ isBusy ? "处理中" : "重新生成" }}</button>
             <button v-if="selectedSticker?.status === 'processing' || selectedSticker?.status === 'failed'" class="secondary-action" type="button" @click="recoverSelectedSticker">恢复贴纸</button>
           </div>
           <p v-if="selectedSticker?.errorMessage" class="error-copy">{{ selectedSticker.errorMessage }}</p>
@@ -1833,7 +1851,7 @@ async function save(status: "draft" | "done" = "draft") {
         <section v-if="activeEditorStep === 3" class="section-block compact-block">
           <div class="section-heading">
             <h2>贴纸版本</h2>
-            <span>{{ selectedSticker?.variant ?? "未选择" }}</span>
+            <span>{{ isBusy ? "生成中" : selectedSticker?.variant ? "选好后自动排版" : "选一个喜欢的" }}</span>
           </div>
           <div class="chip-group compact">
             <button v-for="variant in stickerVariants" :key="variant" class="chip button-chip" :class="{ active: selectedSticker?.variant === variant }" type="button" :disabled="isBusy || !selectedSticker" @click="setVariant(variant)">
