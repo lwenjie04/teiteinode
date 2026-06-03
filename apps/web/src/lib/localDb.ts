@@ -140,6 +140,14 @@ export async function enqueueSync(item: SyncQueueItem) {
   });
 }
 
+export async function removeDiarySyncItems(id: string) {
+  await chainSyncQueueWrite(async () => {
+    const db = await dbPromise;
+    const existing = (await db.getAll("syncQueue")) as SyncQueueItem[];
+    await replaceSyncQueueItems(existing.filter((item) => diaryQueueId(item) !== id));
+  });
+}
+
 export async function compactSyncQueue() {
   return chainSyncQueueWrite(async () => {
     const db = await dbPromise;

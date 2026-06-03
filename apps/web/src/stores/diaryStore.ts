@@ -12,6 +12,7 @@ import {
   getLatestDeletedDiaryLocal,
   listLocalDiaries,
   listSyncQueue,
+  removeDiarySyncItems,
   saveDeletedDiaryLocal,
   saveDiariesLocal,
   saveDiaryLocal
@@ -218,6 +219,8 @@ export const useDiaryStore = defineStore("diaries", {
     async discardLocalDraft(id: string) {
       this.diaries = this.diaries.filter((diary) => diary.id !== id);
       await deleteDiaryLocal(id);
+      await removeDiarySyncItems(id);
+      await this.refreshPendingSyncCount();
     },
     async updateDiary(id: string, patch: Partial<Diary>) {
       const index = this.diaries.findIndex((diary) => diary.id === id);
