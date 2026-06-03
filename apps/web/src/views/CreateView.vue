@@ -120,6 +120,7 @@ async function startDraft(files?: FileList | null) {
 async function handleFiles(event: Event) {
   const input = event.target as HTMLInputElement;
   try {
+    if (!input.files?.length) return;
     await startDraft(input.files);
   } finally {
     input.value = "";
