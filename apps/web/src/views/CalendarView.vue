@@ -251,6 +251,7 @@ const topMood = computed(() => {
         <article v-if="!currentMonthDiaries.length" class="empty-list">
           <strong>这个月还没有贴贴</strong>
           <span>回到记录页拍一张照片，月历会自动亮起来。</span>
+          <button class="primary-action compact-action" type="button" @click="router.push('/create')">开始贴一篇</button>
         </article>
       </div>
     </section>
