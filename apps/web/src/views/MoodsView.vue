@@ -78,6 +78,11 @@ function openDiary(diary: Diary) {
         <span>{{ diary.date }}</span>
         <strong>{{ diary.mood }}</strong>
       </article>
+      <article v-if="!store.diaries.length" class="empty-list">
+        <strong>还没有心情记录</strong>
+        <span>贴一篇小日记后，这里会自动长出你的心情时间轴。</span>
+        <button class="primary-action compact-action" type="button" @click="router.push('/create')">开始贴一篇</button>
+      </article>
     </div>
 
     <div v-else class="sticker-wall">
