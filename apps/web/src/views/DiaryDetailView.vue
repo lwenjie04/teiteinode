@@ -26,6 +26,7 @@ const pendingSyncDiaryIds = computed(() => {
   return ids;
 });
 const diaryHasPendingSync = computed(() => Boolean(diary.value && pendingSyncDiaryIds.value.has(diary.value.id)));
+const canExportDiary = computed(() => diary.value?.status === "done");
 const cardImageNeedsRepair = computed(() => Boolean(diary.value?.cardImageUrl && (brokenCardImage.value || isVolatileImageUrl(diary.value.cardImageUrl))));
 const stickerHealthIssues = computed(() => {
   if (!diary.value) return [];
@@ -320,6 +321,10 @@ function downloadImageBlob(blob: Blob) {
 
 async function exportImage() {
   if (renderingImage.value) return;
+  if (!canExportDiary.value) {
+    ui.showToast("日记完成后再导出图片", "warning");
+    return;
+  }
   renderingImage.value = true;
   try {
     const { canvas, skippedStickers } = await renderDiaryImageCanvas();
@@ -335,6 +340,10 @@ async function exportImage() {
 
 async function shareImage() {
   if (!diary.value || renderingImage.value) return;
+  if (!canExportDiary.value) {
+    ui.showToast("日记完成后再分享图片", "warning");
+    return;
+  }
   renderingImage.value = true;
   try {
     const { canvas, skippedStickers } = await renderDiaryImageCanvas();
@@ -499,8 +508,8 @@ async function deleteCurrentDiary() {
 
     <div class="footer-actions">
       <button class="primary-action" type="button" @click="router.push(`/diaries/${diary.id}/edit`)">继续编辑</button>
-      <button class="secondary-action" type="button" :disabled="renderingImage" @click="shareImage">{{ renderingImage ? "生成中" : "分享图片" }}</button>
-      <button class="secondary-action" type="button" :disabled="renderingImage" @click="exportImage">导出图片</button>
+      <button class="secondary-action" type="button" :disabled="renderingImage || !canExportDiary" @click="shareImage">{{ renderingImage ? "生成中" : "分享图片" }}</button>
+      <button class="secondary-action" type="button" :disabled="renderingImage || !canExportDiary" @click="exportImage">导出图片</button>
       <button class="secondary-action" type="button" @click="copyText">复制文字</button>
       <button class="secondary-action danger-action" type="button" @click="deleteCurrentDiary">删除</button>
     </div>
