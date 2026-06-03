@@ -32,6 +32,24 @@ const stickerHealthIssues = computed(() => {
     })
     .filter((issue): issue is { id: string; stickerId: string; label: string; reason: string } => Boolean(issue));
 });
+const originalPhotoItems = computed(() => {
+  if (!diary.value) return [];
+  const sources = new Map<string, number>();
+  for (const sticker of diary.value.stickers) {
+    const sourceUrl = sticker.sourceImageUrl ?? sticker.remoteImageUrl;
+    if (!sourceUrl) continue;
+    sources.set(sourceUrl, (sources.get(sourceUrl) ?? 0) + 1);
+  }
+  return [...sources.entries()].map(([url, count], index) => ({ id: `${index}:${url}`, url, count }));
+});
+const stickerMaterialItems = computed(() =>
+  diary.value?.stickers.map((sticker, index) => ({
+    id: sticker.id,
+    url: sticker.fileUrl,
+    title: `贴纸 ${index + 1}`,
+    subtitle: sticker.variant
+  })) ?? []
+);
 
 watch(
   () => diary.value?.cardImageUrl ?? "",
@@ -429,6 +447,31 @@ async function deleteCurrentDiary() {
     <div class="chip-group compact">
       <span v-for="tag in diary.tags" :key="tag" class="tag-pill">#{{ tag }}</span>
     </div>
+
+    <section v-if="originalPhotoItems.length || stickerMaterialItems.length" class="section-block compact-block detail-material-panel">
+      <div class="section-heading">
+        <h2>素材回看</h2>
+        <span>{{ originalPhotoItems.length }} 张原图 · {{ stickerMaterialItems.length }} 个贴纸</span>
+      </div>
+      <div v-if="originalPhotoItems.length" class="detail-material-grid">
+        <article v-for="item in originalPhotoItems" :key="item.id" class="detail-material-card">
+          <img :src="item.url" alt="原始照片" />
+          <div>
+            <strong>原始照片</strong>
+            <span>{{ item.count }} 个主体来源</span>
+          </div>
+        </article>
+      </div>
+      <div v-if="stickerMaterialItems.length" class="detail-material-grid">
+        <article v-for="item in stickerMaterialItems" :key="item.id" class="detail-material-card">
+          <img :src="item.url" alt="贴纸素材" />
+          <div>
+            <strong>{{ item.title }}</strong>
+            <span>{{ item.subtitle }}</span>
+          </div>
+        </article>
+      </div>
+    </section>
 
     <div class="footer-actions">
       <button class="primary-action" type="button" @click="router.push(`/diaries/${diary.id}/edit`)">继续编辑</button>
