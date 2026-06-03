@@ -99,6 +99,17 @@ function stickerNeedsRepair(sticker: Sticker) {
   return brokenStickerIds.value.has(sticker.id) || sticker.status === "failed" || stickerHasVolatileUrl(sticker);
 }
 
+function diaryTitle(status: NonNullable<typeof diary.value>["status"]) {
+  const labels: Record<NonNullable<typeof diary.value>["status"], string> = {
+    draft: "未完成草稿",
+    processing: "处理中",
+    done: "日记详情",
+    syncing: "同步中",
+    sync_failed: "同步失败"
+  };
+  return labels[status];
+}
+
 function markStickerImageLoaded(id: string) {
   if (!brokenStickerIds.value.has(id)) return;
   const next = new Set(brokenStickerIds.value);
@@ -362,7 +373,7 @@ async function deleteCurrentDiary() {
   <section v-if="diary" class="detail-page">
     <div class="page-title">
       <p class="eyebrow">{{ diary.date }}</p>
-      <h1>{{ diary.status === "draft" ? "未完成草稿" : "日记详情" }}</h1>
+      <h1>{{ diaryTitle(diary.status) }}</h1>
     </div>
 
     <section v-if="diary.cardImageUrl" class="detail-cover-panel" :class="{ broken: cardImageNeedsRepair }">
