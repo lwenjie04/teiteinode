@@ -778,12 +778,23 @@ function syncQueueLabel(item: SyncQueueItem) {
   return item.type;
 }
 
+function syncPayloadStatusLabel(status: unknown) {
+  const labels: Record<string, string> = {
+    draft: "草稿",
+    processing: "处理中",
+    done: "已完成",
+    syncing: "同步中",
+    sync_failed: "同步失败"
+  };
+  return typeof status === "string" ? labels[status] ?? status : "";
+}
+
 function syncQueueDetail(item: SyncQueueItem) {
   const payload = syncQueuePayload(item);
   if (item.type.startsWith("settings:")) return "创作偏好";
   const date = typeof payload.date === "string" ? payload.date : "";
   const id = typeof payload.id === "string" ? payload.id.slice(0, 8) : "";
-  const status = typeof payload.status === "string" ? payload.status : "";
+  const status = syncPayloadStatusLabel(payload.status);
   return [date, status, id].filter(Boolean).join(" · ") || "等待同步";
 }
 
