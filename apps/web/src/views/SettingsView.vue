@@ -1212,5 +1212,26 @@ async function requireLoginSync(action: "push" | "pull" | "both") {
       <p class="subtle-copy">日记会先保存在这台设备；登录后才会同步到云端。AI 未配置时，生成日记和抠图会使用本地兜底体验。</p>
       <p class="subtle-copy">{{ aiMessage }}</p>
     </section>
+
+    <section class="section-block quiet-settings">
+      <div class="section-heading">
+        <h2>关于贴贴日记</h2>
+        <span>PWA</span>
+      </div>
+      <div class="settings-list">
+        <article>
+          <strong>隐私说明</strong>
+          <span>本地草稿、素材和偏好优先保存在当前设备；登录同步、图片上传和 AI 处理只在你主动使用相关功能时发生。</span>
+        </article>
+        <article>
+          <strong>AI 服务</strong>
+          <span>前端只显示服务状态，不展示也不保存 API Key；密钥只应配置在后端环境变量中。</span>
+        </article>
+        <article>
+          <strong>版本范围</strong>
+          <span>当前版本聚焦照片日记、贴纸生成、手账编辑、回看、导出和同步，不包含公开社区和关注互动。</span>
+        </article>
+      </div>
+    </section>
   </section>
 </template>
