@@ -14,6 +14,18 @@ const renderingImage = ref(false);
 const brokenStickerIds = ref(new Set<string>());
 const brokenCardImage = ref(false);
 
+const pendingSyncDiaryIds = computed(() => {
+  const ids = new Set<string>();
+  for (const item of store.syncQueueItems) {
+    if (!item.type.startsWith("diary:")) continue;
+    const payload = item.payload;
+    if (!payload || typeof payload !== "object") continue;
+    const id = (payload as { id?: unknown }).id;
+    if (typeof id === "string") ids.add(id);
+  }
+  return ids;
+});
+const diaryHasPendingSync = computed(() => Boolean(diary.value && pendingSyncDiaryIds.value.has(diary.value.id)));
 const cardImageNeedsRepair = computed(() => Boolean(diary.value?.cardImageUrl && (brokenCardImage.value || isVolatileImageUrl(diary.value.cardImageUrl))));
 const stickerHealthIssues = computed(() => {
   if (!diary.value) return [];
@@ -441,6 +453,7 @@ async function deleteCurrentDiary() {
       <span>风格：{{ diary.writingStyle }}</span>
       <span>长度：{{ diary.length }}</span>
       <span>背景：{{ diary.background }}</span>
+      <span v-if="diaryHasPendingSync">待同步</span>
       <span>同步：{{ store.syncState }}</span>
     </div>
 
