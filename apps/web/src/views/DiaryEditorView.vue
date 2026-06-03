@@ -1030,6 +1030,7 @@ async function setVariant(variant: StickerVariant) {
           const result = await stylizeSticker(auth.token, { imageUrl: uploadedUrl, variant, selection });
           nextUrl = result.stickerUrl;
           message = result.message;
+          usedBackend = true;
         } catch (error) {
           backendError = error;
           await new Promise((resolve) => window.setTimeout(resolve, 180));
@@ -1148,6 +1149,7 @@ async function processSubject() {
           const result = await segmentSubject(auth.token, { imageUrl: uploadedUrl, selection });
           stickerUrl = result.stickerUrl;
           message = result.message;
+          usedBackend = true;
         } catch (error) {
           backendError = error;
           await new Promise((resolve) => window.setTimeout(resolve, 220));
