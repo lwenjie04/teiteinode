@@ -1595,6 +1595,10 @@ async function generateText() {
 
 async function save(status: "draft" | "done" = "draft") {
   if (!diary.value || savingDiary.value) return;
+  if (generatingText.value) {
+    ui.showToast("日记文字生成中，完成后再保存", "warning");
+    return;
+  }
   if (status === "done" && !form.body.trim()) {
     activeEditorStep.value = 5;
     ui.showToast("先写一点日记文字，再完成保存", "warning");
@@ -2030,15 +2034,15 @@ async function save(status: "draft" | "done" = "draft") {
           <textarea v-model="form.body" rows="5" placeholder="生成后可以继续修改文字。" />
           <div class="hero-actions">
             <button class="secondary-action" type="button" :disabled="generatingText" @click="generateText">{{ generatingText ? "生成中" : "生成日记" }}</button>
-            <button class="secondary-action" type="button" :disabled="savingDiary" @click="save('draft')">{{ savingDiary ? "保存中" : "保存草稿" }}</button>
-            <button class="primary-action" type="button" :disabled="savingDiary" @click="save('done')">{{ savingDiary ? "保存中" : "完成保存" }}</button>
+            <button class="secondary-action" type="button" :disabled="savingDiary || generatingText" @click="save('draft')">{{ savingDiary ? "保存中" : "保存草稿" }}</button>
+            <button class="primary-action" type="button" :disabled="savingDiary || generatingText" @click="save('done')">{{ savingDiary ? "保存中" : "完成保存" }}</button>
           </div>
         </section>
 
         <div class="wizard-actions">
           <button class="secondary-action" type="button" :disabled="activeEditorStep === 1" @click="previousEditorStep">上一步</button>
           <button v-if="activeEditorStep < editorSteps.length" class="primary-action" type="button" :disabled="isBusy || !canGoNextStep" @click="nextEditorStep">下一步</button>
-          <button v-else class="primary-action" type="button" :disabled="savingDiary" @click="save('done')">{{ savingDiary ? "保存中" : "完成保存" }}</button>
+          <button v-else class="primary-action" type="button" :disabled="savingDiary || generatingText" @click="save('done')">{{ savingDiary ? "保存中" : "完成保存" }}</button>
         </div>
       </div>
     </section>
