@@ -1999,21 +1999,21 @@ async function save(status: "draft" | "done" = "draft") {
             <span>{{ selectedSticker ? "已选中" : "未选择" }}</span>
           </div>
           <div class="nudge-grid">
-            <button type="button" :disabled="isBusy" @click="patchSticker({ y: (selectedSticker?.y ?? 50) - 4 })">上</button>
-            <button type="button" :disabled="isBusy" @click="patchSticker({ x: (selectedSticker?.x ?? 50) - 4 })">左</button>
-            <button type="button" :disabled="isBusy" @click="patchSticker({ x: (selectedSticker?.x ?? 50) + 4 })">右</button>
-            <button type="button" :disabled="isBusy" @click="patchSticker({ y: (selectedSticker?.y ?? 50) + 4 })">下</button>
+            <button type="button" :disabled="isBusy || !selectedSticker" @click="patchSticker({ y: (selectedSticker?.y ?? 50) - 4 })">上</button>
+            <button type="button" :disabled="isBusy || !selectedSticker" @click="patchSticker({ x: (selectedSticker?.x ?? 50) - 4 })">左</button>
+            <button type="button" :disabled="isBusy || !selectedSticker" @click="patchSticker({ x: (selectedSticker?.x ?? 50) + 4 })">右</button>
+            <button type="button" :disabled="isBusy || !selectedSticker" @click="patchSticker({ y: (selectedSticker?.y ?? 50) + 4 })">下</button>
           </div>
           <div class="tool-grid small-tools">
-            <button type="button" :disabled="isBusy" @click="patchSticker({ scale: Math.max((selectedSticker?.scale ?? 1) - 0.1, 0.3) })">缩小</button>
-            <button type="button" :disabled="isBusy" @click="patchSticker({ scale: Math.min((selectedSticker?.scale ?? 1) + 0.1, 2.4) })">放大</button>
-            <button type="button" :disabled="isBusy" @click="patchSticker({ rotation: (selectedSticker?.rotation ?? 0) - 8 })">左旋</button>
-            <button type="button" :disabled="isBusy" @click="patchSticker({ rotation: (selectedSticker?.rotation ?? 0) + 8 })">右旋</button>
-            <button type="button" :disabled="isBusy" @click="patchSticker({ zIndex: (selectedSticker?.zIndex ?? 1) + 1 })">置顶</button>
+            <button type="button" :disabled="isBusy || !selectedSticker" @click="patchSticker({ scale: Math.max((selectedSticker?.scale ?? 1) - 0.1, 0.3) })">缩小</button>
+            <button type="button" :disabled="isBusy || !selectedSticker" @click="patchSticker({ scale: Math.min((selectedSticker?.scale ?? 1) + 0.1, 2.4) })">放大</button>
+            <button type="button" :disabled="isBusy || !selectedSticker" @click="patchSticker({ rotation: (selectedSticker?.rotation ?? 0) - 8 })">左旋</button>
+            <button type="button" :disabled="isBusy || !selectedSticker" @click="patchSticker({ rotation: (selectedSticker?.rotation ?? 0) + 8 })">右旋</button>
+            <button type="button" :disabled="isBusy || !selectedSticker" @click="patchSticker({ zIndex: (selectedSticker?.zIndex ?? 1) + 1 })">置顶</button>
             <button type="button" :disabled="isBusy || !selectedSticker" @click="patchSticker({ zIndex: Math.max(0, (selectedSticker?.zIndex ?? 1) - 1) })">置底</button>
             <button type="button" :disabled="isBusy || !selectedSticker" @click="duplicateSelectedSticker">复制</button>
             <button type="button" :disabled="isBusy || !selectedSticker" @click="reselectSelectedSubject">重抠</button>
-            <button type="button" :disabled="isBusy" @click="removeSelectedSticker">删除</button>
+            <button type="button" :disabled="isBusy || !selectedSticker" @click="removeSelectedSticker">删除</button>
           </div>
         </section>
 
