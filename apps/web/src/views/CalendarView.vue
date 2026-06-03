@@ -72,6 +72,17 @@ function diaryHasPendingSync(id: string) {
   return pendingSyncDiaryIds.value.has(id);
 }
 
+function diaryStatusLabel(status: Diary["status"]) {
+  const labels: Record<Diary["status"], string> = {
+    draft: "草稿",
+    processing: "处理中",
+    done: "已完成",
+    syncing: "同步中",
+    sync_failed: "同步失败"
+  };
+  return labels[status];
+}
+
 const diariesByDate = computed(() => {
   const grouped = new Map<string, Diary[]>();
   for (const diary of store.diaries) {
@@ -223,7 +234,7 @@ const topMood = computed(() => {
           <div>
             <div class="row-meta">
               <strong>{{ diary.date }}</strong>
-              <span>{{ diary.status === "draft" ? "草稿" : "已完成" }}</span>
+              <span>{{ diaryStatusLabel(diary.status) }}</span>
               <span v-if="diaryHasPendingSync(diary.id)">待同步</span>
             </div>
             <p>{{ diary.body || "还没有写完的小日记" }}</p>
