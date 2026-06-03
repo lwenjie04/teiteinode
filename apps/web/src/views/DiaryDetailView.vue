@@ -331,6 +331,10 @@ function downloadImageBlob(blob: Blob) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function isShareAbort(error: unknown) {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
 async function exportImage() {
   if (renderingImage.value) return;
   if (!canExportDiary.value) {
@@ -373,7 +377,8 @@ async function shareImage() {
       downloadImageBlob(blob);
       ui.showToast(skippedStickers ? `已导出图片，${skippedStickers} 张贴纸显示为修复占位` : "当前浏览器不支持直接分享，已导出图片", "warning");
     }
-  } catch {
+  } catch (error) {
+    if (isShareAbort(error)) return;
     ui.showToast("分享失败，请稍后再试", "warning");
   } finally {
     renderingImage.value = false;
