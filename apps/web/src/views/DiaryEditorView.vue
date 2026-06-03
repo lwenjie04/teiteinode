@@ -1057,6 +1057,7 @@ async function setVariant(variant: StickerVariant) {
         errorMessage: auth.token ? `后端风格化失败，已用本地备用效果。原因：${detail}` : "本地风格化已使用备用效果完成。"
       });
       aiNotice.value = auth.token ? `后端生成失败，已使用本地备用效果生成「${variant}」。原因：${detail}` : `已使用本地备用效果生成「${variant}」。`;
+      activeEditorStep.value = Math.max(activeEditorStep.value, 4);
       ui.showToast("已使用本地风格", "warning");
     } catch (fallbackError) {
       const finalDetail = `后端/主流程：${detail}；本地备用：${shortError(fallbackError)}`;
@@ -1174,6 +1175,7 @@ async function processSubject() {
         errorMessage: auth.token ? `后端抠图失败，已使用本地备用裁切。原因：${detail}` : "本地抠图已使用备用裁切结果。"
       });
       aiNotice.value = auth.token ? `后端抠图失败，已先使用本地备用裁切。原因：${detail}` : "本地边缘清理没有完成，已先使用备用裁切贴纸。";
+      activeEditorStep.value = Math.max(activeEditorStep.value, 3);
       ui.showToast("已使用本地裁切", "warning");
     } catch (fallbackError) {
       const finalDetail = `后端/主流程：${detail}；本地备用：${shortError(fallbackError)}`;
