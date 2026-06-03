@@ -27,6 +27,7 @@ const pendingSyncDiaryIds = computed(() => {
 });
 const diaryHasPendingSync = computed(() => Boolean(diary.value && pendingSyncDiaryIds.value.has(diary.value.id)));
 const canExportDiary = computed(() => diary.value?.status === "done");
+const canCopyText = computed(() => Boolean(diary.value?.body.trim()));
 const cardImageNeedsRepair = computed(() => Boolean(diary.value?.cardImageUrl && (brokenCardImage.value || isVolatileImageUrl(diary.value.cardImageUrl))));
 const stickerHealthIssues = computed(() => {
   if (!diary.value) return [];
@@ -73,7 +74,10 @@ watch(
 );
 
 async function copyText() {
-  if (!diary.value?.body) return;
+  if (!diary.value?.body.trim()) {
+    ui.showToast("还没有可复制的日记文字", "warning");
+    return;
+  }
   await navigator.clipboard.writeText(diary.value.body);
   ui.showToast("日记文字已复制", "success");
 }
@@ -510,7 +514,7 @@ async function deleteCurrentDiary() {
       <button class="primary-action" type="button" @click="router.push(`/diaries/${diary.id}/edit`)">继续编辑</button>
       <button class="secondary-action" type="button" :disabled="renderingImage || !canExportDiary" @click="shareImage">{{ renderingImage ? "生成中" : "分享图片" }}</button>
       <button class="secondary-action" type="button" :disabled="renderingImage || !canExportDiary" @click="exportImage">导出图片</button>
-      <button class="secondary-action" type="button" @click="copyText">复制文字</button>
+      <button class="secondary-action" type="button" :disabled="!canCopyText" @click="copyText">复制文字</button>
       <button class="secondary-action danger-action" type="button" @click="deleteCurrentDiary">删除</button>
     </div>
   </section>
