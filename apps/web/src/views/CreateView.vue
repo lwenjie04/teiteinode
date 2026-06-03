@@ -21,6 +21,17 @@ const todayKey = formatLocalDateKey();
 const todayDiaries = computed(() => store.diaries.filter((diary) => diary.date === todayKey));
 const visibleDrafts = computed(() => store.drafts.slice(0, 1));
 const latestDiary = computed(() => store.doneDiaries[0]);
+const pendingSyncDiaryIds = computed(() => {
+  const ids = new Set<string>();
+  for (const item of store.syncQueueItems) {
+    if (!item.type.startsWith("diary:")) continue;
+    const payload = item.payload;
+    if (!payload || typeof payload !== "object") continue;
+    const id = (payload as { id?: unknown }).id;
+    if (typeof id === "string") ids.add(id);
+  }
+  return ids;
+});
 
 interface DraftImageSource {
   url: string;
@@ -104,6 +115,10 @@ async function handleFiles(event: Event) {
 function openDiary(id: string, edit = false) {
   router.push(edit ? `/diaries/${id}/edit` : `/diaries/${id}`);
 }
+
+function diaryHasPendingSync(id: string) {
+  return pendingSyncDiaryIds.value.has(id);
+}
 </script>
 
 <template>
@@ -136,7 +151,7 @@ function openDiary(id: string, edit = false) {
         <div>
           <strong>{{ draft.date }}</strong>
           <p>{{ draft.body || "还没有写正文，点这里继续补上。" }}</p>
-          <span>{{ draft.stickers.length }} 张贴纸 · {{ draft.mood }}</span>
+          <span>{{ draft.stickers.length }} 张贴纸 · {{ draft.mood }}{{ diaryHasPendingSync(draft.id) ? " · 待同步" : "" }}</span>
         </div>
       </article>
     </section>
@@ -154,6 +169,7 @@ function openDiary(id: string, edit = false) {
         <div>
           <strong>{{ latestDiary.date }} · {{ latestDiary.mood }}</strong>
           <p>{{ latestDiary.body || "这篇日记还没有正文。" }}</p>
+          <span v-if="diaryHasPendingSync(latestDiary.id)">待同步</span>
           <div class="tag-line">
             <span v-for="tag in latestDiary.tags.slice(0, 3)" :key="tag">#{{ tag }}</span>
           </div>
