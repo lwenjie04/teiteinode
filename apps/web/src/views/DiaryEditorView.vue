@@ -1228,6 +1228,15 @@ async function duplicateSelectedSticker() {
   ui.showToast("已复制贴纸", "success");
 }
 
+function reselectSelectedSubject() {
+  if (!selectedSticker.value || isBusy.value) return;
+  activeEditorStep.value = 2;
+  selectedDecorationId.value = null;
+  selectionMode.value = selectedSticker.value.selection?.mode ?? "point";
+  aiNotice.value = "重新在原图上点一下或框出主体，会自动生成新的抠图。";
+  ui.showToast("重新选择主体", "info");
+}
+
 async function addSubjectFromSelectedSource() {
   if (!diary.value || !selectedSticker.value || isBusy.value) return;
   const sourceUrl = selectedSticker.value.sourceImageUrl ?? selectedSticker.value.originalFileUrl ?? selectedSticker.value.fileUrl;
@@ -1986,6 +1995,7 @@ async function save(status: "draft" | "done" = "draft") {
             <button type="button" :disabled="isBusy" @click="patchSticker({ zIndex: (selectedSticker?.zIndex ?? 1) + 1 })">置顶</button>
             <button type="button" :disabled="isBusy || !selectedSticker" @click="patchSticker({ zIndex: Math.max(0, (selectedSticker?.zIndex ?? 1) - 1) })">置底</button>
             <button type="button" :disabled="isBusy || !selectedSticker" @click="duplicateSelectedSticker">复制</button>
+            <button type="button" :disabled="isBusy || !selectedSticker" @click="reselectSelectedSubject">重抠</button>
             <button type="button" :disabled="isBusy" @click="removeSelectedSticker">删除</button>
           </div>
         </section>
