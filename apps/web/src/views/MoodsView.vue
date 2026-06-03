@@ -92,10 +92,11 @@ function openDiary(diary: Diary) {
         <strong>{{ diary.mood }}</strong>
         <span>{{ diary.date }}</span>
       </button>
-      <button v-for="item in wallDiaries.length ? [] : moodCounts" :key="item.mood" type="button" @click="openMood(item.mood)">
-        <strong>{{ item.mood }}</strong>
-        <span>{{ item.count }}</span>
-      </button>
+      <article v-if="!wallDiaries.length" class="empty-list">
+        <strong>还没有贴纸墙</strong>
+        <span>完成一篇带贴纸的小日记后，这里会自动收集你的心情卡片。</span>
+        <button class="primary-action compact-action" type="button" @click="router.push('/create')">开始贴一篇</button>
+      </article>
     </div>
   </section>
 </template>
