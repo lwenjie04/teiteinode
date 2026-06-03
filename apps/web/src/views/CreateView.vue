@@ -109,7 +109,7 @@ async function startDraft(files?: FileList | null) {
       const compressText = compressedCount ? `，已压缩 ${compressedCount} 张大图` : "";
       ui.showToast(auth.token ? `照片已添加，并尝试上传素材${compressText}` : `照片已添加到本地草稿${compressText}`, "success");
     } catch {
-      await store.removeDiary(draft.id);
+      await store.discardLocalDraft(draft.id);
       ui.showToast("照片读取失败，请换一张再试", "warning");
       return;
     }

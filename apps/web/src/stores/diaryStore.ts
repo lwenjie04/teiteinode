@@ -215,6 +215,10 @@ export const useDiaryStore = defineStore("diaries", {
     getDiary(id: string) {
       return this.diaries.find((diary) => diary.id === id);
     },
+    async discardLocalDraft(id: string) {
+      this.diaries = this.diaries.filter((diary) => diary.id !== id);
+      await deleteDiaryLocal(id);
+    },
     async updateDiary(id: string, patch: Partial<Diary>) {
       const index = this.diaries.findIndex((diary) => diary.id === id);
       if (index < 0) return undefined;
