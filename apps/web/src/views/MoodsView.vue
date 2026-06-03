@@ -28,6 +28,7 @@ const moodCounts = computed(() =>
 );
 
 const maxMoodCount = computed(() => Math.max(...moodCounts.value.map((item) => item.count), 1));
+const wallDiaries = computed(() => store.diaries.filter((diary) => diary.cardImageUrl || diary.stickers.length).slice(0, 18));
 
 function openMood(mood: Mood) {
   router.push({ path: "/timeline", query: { mood } });
@@ -72,7 +73,13 @@ function openMood(mood: Mood) {
     </div>
 
     <div v-else class="sticker-wall">
-      <button v-for="item in moodCounts" :key="item.mood" type="button" @click="openMood(item.mood)">
+      <button v-for="diary in wallDiaries" :key="diary.id" class="mood-sticker-card" type="button" @click="router.push(`/diaries/${diary.id}`)">
+        <img v-if="diary.cardImageUrl" :src="diary.cardImageUrl" alt="" />
+        <img v-else-if="diary.stickers[0]" :src="diary.stickers[0].fileUrl" alt="" />
+        <strong>{{ diary.mood }}</strong>
+        <span>{{ diary.date }}</span>
+      </button>
+      <button v-for="item in wallDiaries.length ? [] : moodCounts" :key="item.mood" type="button" @click="openMood(item.mood)">
         <strong>{{ item.mood }}</strong>
         <span>{{ item.count }}</span>
       </button>

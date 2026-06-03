@@ -1665,6 +1665,29 @@ input[type="file"].visually-hidden {
   cursor: pointer;
 }
 
+.sticker-wall .mood-sticker-card {
+  width: 104px;
+  min-width: 104px;
+  padding: 8px;
+  overflow: hidden;
+}
+
+.mood-sticker-card img {
+  width: 88px;
+  height: 88px;
+  object-fit: cover;
+  border: 1px solid rgba(25, 141, 232, 0.12);
+  border-radius: 14px;
+  background: rgba(234, 247, 255, 0.72);
+}
+
+.mood-sticker-card strong,
+.mood-sticker-card span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .sticker-wall button span {
   padding: 0;
   border: 0;
