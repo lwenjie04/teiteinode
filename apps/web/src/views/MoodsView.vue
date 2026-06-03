@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { moods } from "@tietie/shared";
-import type { Mood } from "@tietie/shared";
+import type { Diary, Mood } from "@tietie/shared";
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useDiaryStore } from "../stores/diaryStore";
@@ -32,6 +32,14 @@ const wallDiaries = computed(() => store.diaries.filter((diary) => diary.cardIma
 
 function openMood(mood: Mood) {
   router.push({ path: "/timeline", query: { mood } });
+}
+
+function diaryNeedsEditing(diary: Diary) {
+  return diary.status !== "done";
+}
+
+function openDiary(diary: Diary) {
+  router.push(diaryNeedsEditing(diary) ? `/diaries/${diary.id}/edit` : `/diaries/${diary.id}`);
 }
 </script>
 
@@ -66,14 +74,14 @@ function openMood(mood: Mood) {
     </div>
 
     <div v-else-if="view === 'line'" class="mood-line">
-      <article v-for="diary in store.diaries" :key="diary.id" class="mood-line-item" @click="router.push(`/diaries/${diary.id}`)">
+      <article v-for="diary in store.diaries" :key="diary.id" class="mood-line-item" @click="openDiary(diary)">
         <span>{{ diary.date }}</span>
         <strong>{{ diary.mood }}</strong>
       </article>
     </div>
 
     <div v-else class="sticker-wall">
-      <button v-for="diary in wallDiaries" :key="diary.id" class="mood-sticker-card" type="button" @click="router.push(`/diaries/${diary.id}`)">
+      <button v-for="diary in wallDiaries" :key="diary.id" class="mood-sticker-card" type="button" @click="openDiary(diary)">
         <img v-if="diary.cardImageUrl" :src="diary.cardImageUrl" alt="" />
         <img v-else-if="diary.stickers[0]" :src="diary.stickers[0].fileUrl" alt="" />
         <strong>{{ diary.mood }}</strong>
