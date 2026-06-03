@@ -68,6 +68,10 @@ function openDiaryById(id: string) {
   router.push(`/diaries/${id}`);
 }
 
+function diaryHasPendingSync(id: string) {
+  return pendingSyncDiaryIds.value.has(id);
+}
+
 const diariesByDate = computed(() => {
   const grouped = new Map<string, Diary[]>();
   for (const diary of store.diaries) {
@@ -123,6 +127,17 @@ const currentMonthDiaries = computed(() =>
 
 const doneCount = computed(() => currentMonthDiaries.value.filter((diary) => diary.status === "done").length);
 const draftCount = computed(() => currentMonthDiaries.value.filter((diary) => diary.status === "draft").length);
+const pendingSyncDiaryIds = computed(() => {
+  const ids = new Set<string>();
+  for (const item of store.syncQueueItems) {
+    if (!item.type.startsWith("diary:")) continue;
+    const payload = item.payload;
+    if (!payload || typeof payload !== "object") continue;
+    const id = (payload as { id?: unknown }).id;
+    if (typeof id === "string") ids.add(id);
+  }
+  return ids;
+});
 
 const topMood = computed(() => {
   const counts = new Map<string, number>();
@@ -209,6 +224,7 @@ const topMood = computed(() => {
             <div class="row-meta">
               <strong>{{ diary.date }}</strong>
               <span>{{ diary.status === "draft" ? "草稿" : "已完成" }}</span>
+              <span v-if="diaryHasPendingSync(diary.id)">待同步</span>
             </div>
             <p>{{ diary.body || "还没有写完的小日记" }}</p>
             <div class="tag-line">
