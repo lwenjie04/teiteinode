@@ -7,7 +7,7 @@ import { formatLocalDateKey } from "../lib/dateTools";
 import { useDiaryStore } from "../stores/diaryStore";
 import { useUiStore } from "../stores/uiStore";
 
-type StatusFilter = "all" | "draft" | "done";
+type StatusFilter = "all" | Diary["status"];
 
 const store = useDiaryStore();
 const ui = useUiStore();
@@ -20,6 +20,14 @@ const moodFilter = ref(readQueryText(route.query.mood));
 const dateFilter = ref(readQueryText(route.query.date));
 const todayKey = formatLocalDateKey();
 const monthKey = todayKey.slice(0, 7);
+const statusLabels: Record<StatusFilter, string> = {
+  all: "全部",
+  draft: "草稿",
+  processing: "处理中",
+  done: "已完成",
+  syncing: "同步中",
+  sync_failed: "同步失败"
+};
 
 function readQueryText(value: unknown) {
   if (Array.isArray(value)) return String(value[0] ?? "");
@@ -28,7 +36,7 @@ function readQueryText(value: unknown) {
 
 function readStatus(value: unknown): StatusFilter {
   const status = readQueryText(value);
-  return status === "draft" || status === "done" ? status : "all";
+  return Object.keys(statusLabels).includes(status) ? (status as StatusFilter) : "all";
 }
 
 function sameQueryValue(a: unknown, b: string | undefined) {
@@ -70,6 +78,9 @@ const restoringDeleted = ref(false);
 const brokenCardImageIds = ref(new Set<string>());
 const doneCount = computed(() => store.doneDiaries.length);
 const draftCount = computed(() => store.drafts.length);
+const processingCount = computed(() => store.diaries.filter((diary) => diary.status === "processing").length);
+const syncingCount = computed(() => store.diaries.filter((diary) => diary.status === "syncing").length);
+const syncFailedCount = computed(() => store.diaries.filter((diary) => diary.status === "sync_failed").length);
 const todayCount = computed(() => store.diaries.filter((diary) => diary.date === todayKey).length);
 const monthCount = computed(() => store.diaries.filter((diary) => diary.date.startsWith(monthKey)).length);
 const pendingSyncDiaryIds = computed(() => {
@@ -109,6 +120,10 @@ function resetFilters() {
 
 function setStatusFilter(status: StatusFilter) {
   statusFilter.value = status;
+}
+
+function statusFilterLabel(status: StatusFilter) {
+  return statusLabels[status];
 }
 
 function diaryHasPendingSync(id: string) {
@@ -210,6 +225,18 @@ async function undoDelete() {
         <span>草稿</span>
         <strong>{{ draftCount }}</strong>
       </button>
+      <button type="button" :class="{ active: statusFilter === 'processing' }" @click="setStatusFilter('processing')">
+        <span>处理中</span>
+        <strong>{{ processingCount }}</strong>
+      </button>
+      <button type="button" :class="{ active: statusFilter === 'syncing' }" @click="setStatusFilter('syncing')">
+        <span>同步中</span>
+        <strong>{{ syncingCount }}</strong>
+      </button>
+      <button type="button" :class="{ active: statusFilter === 'sync_failed' }" @click="setStatusFilter('sync_failed')">
+        <span>同步失败</span>
+        <strong>{{ syncFailedCount }}</strong>
+      </button>
       <button type="button" @click="dateFilter = todayKey">
         <span>今天</span>
         <strong>{{ todayCount }}</strong>
@@ -239,17 +266,20 @@ async function undoDelete() {
         </label>
       </div>
 
-      <div class="segmented three">
+      <div class="segmented">
         <button type="button" :class="{ active: statusFilter === 'all' }" @click="statusFilter = 'all'">全部</button>
         <button type="button" :class="{ active: statusFilter === 'done' }" @click="statusFilter = 'done'">已完成</button>
         <button type="button" :class="{ active: statusFilter === 'draft' }" @click="statusFilter = 'draft'">草稿</button>
+        <button type="button" :class="{ active: statusFilter === 'processing' }" @click="statusFilter = 'processing'">处理中</button>
+        <button type="button" :class="{ active: statusFilter === 'syncing' }" @click="statusFilter = 'syncing'">同步中</button>
+        <button type="button" :class="{ active: statusFilter === 'sync_failed' }" @click="statusFilter = 'sync_failed'">同步失败</button>
       </div>
 
       <div v-if="hasActiveFilters" class="active-filter-row">
         <span v-if="query.trim()">关键词：{{ query.trim() }}</span>
         <span v-if="dateFilter">日期：{{ dateFilter }}</span>
         <span v-if="moodFilter">心情：{{ moodFilter }}</span>
-        <span v-if="statusFilter !== 'all'">状态：{{ statusFilter === "draft" ? "草稿" : "已完成" }}</span>
+        <span v-if="statusFilter !== 'all'">状态：{{ statusFilterLabel(statusFilter) }}</span>
         <button type="button" @click="resetFilters">清空</button>
       </div>
     </details>
