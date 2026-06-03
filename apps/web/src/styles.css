@@ -754,7 +754,9 @@ input[type="file"].visually-hidden {
   margin-bottom: 14px;
 }
 
-.step-strip button {
+.step-dot {
+  display: grid;
+  place-items: center;
   min-height: 36px;
   padding: 9px 6px;
   border: 1px solid var(--line);
@@ -764,16 +766,15 @@ input[type="file"].visually-hidden {
   font-size: 12px;
   font-weight: 900;
   text-align: center;
-  cursor: pointer;
 }
 
-.step-strip button.active {
+.step-dot.active {
   border-color: rgba(227, 93, 69, 0.2);
   background: var(--accent-soft);
   color: var(--accent-strong);
 }
 
-.step-strip button.done {
+.step-dot.done {
   border-color: rgba(116, 220, 188, 0.5);
   color: var(--text-primary);
 }
@@ -2241,11 +2242,11 @@ input[type="file"].visually-hidden {
   box-shadow: 0 12px 26px rgba(24, 96, 144, 0.07);
 }
 
-.editor-page .step-strip button {
+.editor-page .step-dot {
   border-radius: 14px;
 }
 
-.editor-page .step-strip button.active {
+.editor-page .step-dot.active {
   background: var(--accent);
   color: #ffffff;
   box-shadow: 0 10px 18px rgba(25, 141, 232, 0.16);

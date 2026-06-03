@@ -102,12 +102,6 @@ const stickerHealthIssues = computed(() => {
     .filter((issue): issue is { id: string; stickerId: string; label: string; reason: string } => Boolean(issue));
 });
 const selectedStickerNeedsRepair = computed(() => Boolean(selectedSticker.value && stickerNeedsRepair(selectedSticker.value)));
-const currentStep = computed(() => {
-  if (!diary.value?.stickers.length) return 1;
-  if (!hasProcessedSubject.value) return 2;
-  if (!form.body) return 5;
-  return 5;
-});
 const activeEditorStep = ref(1);
 const editorSteps = [
   { id: 1, label: "加照片" },
@@ -1619,10 +1613,10 @@ async function save(status: "draft" | "done" = "draft") {
       <button class="secondary-action" type="button" @click="router.push(`/diaries/${diary.id}`)">预览</button>
     </div>
 
-    <div class="step-strip">
-      <button v-for="step in editorSteps" :key="step.id" type="button" :class="{ active: activeEditorStep === step.id, done: currentStep > step.id }" @click="activeEditorStep = step.id">
+    <div class="step-strip" aria-label="编辑进度">
+      <span v-for="step in editorSteps" :key="step.id" class="step-dot" :class="{ active: activeEditorStep === step.id, done: activeEditorStep > step.id }" :aria-current="activeEditorStep === step.id ? 'step' : undefined">
         {{ step.id }} {{ step.label }}
-      </button>
+      </span>
     </div>
 
     <section class="editor-layout">
