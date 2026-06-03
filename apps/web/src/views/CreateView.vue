@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import type { Diary } from "@tietie/shared";
 import { useRouter } from "vue-router";
 import { uploadImage } from "../lib/api";
 import { formatLocalDateKey } from "../lib/dateTools";
@@ -19,7 +20,8 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const cameraInput = ref<HTMLInputElement | null>(null);
 const todayKey = formatLocalDateKey();
 const todayDiaries = computed(() => store.diaries.filter((diary) => diary.date === todayKey));
-const visibleDrafts = computed(() => store.drafts.slice(0, 1));
+const unfinishedDiaries = computed(() => store.diaries.filter((diary) => diary.status !== "done"));
+const visibleUnfinishedDiaries = computed(() => unfinishedDiaries.value.slice(0, 1));
 const latestDiary = computed(() => store.doneDiaries[0]);
 const pendingSyncDiaryIds = computed(() => {
   const ids = new Set<string>();
@@ -119,6 +121,17 @@ function openDiary(id: string, edit = false) {
 function diaryHasPendingSync(id: string) {
   return pendingSyncDiaryIds.value.has(id);
 }
+
+function diaryStatusLabel(status: Diary["status"]) {
+  const labels: Record<Diary["status"], string> = {
+    draft: "草稿",
+    processing: "处理中",
+    done: "已完成",
+    syncing: "同步中",
+    sync_failed: "同步失败"
+  };
+  return labels[status];
+}
 </script>
 
 <template>
@@ -138,20 +151,20 @@ function diaryHasPendingSync(id: string) {
       </div>
     </div>
 
-    <section v-if="visibleDrafts.length" class="section-block">
+    <section v-if="visibleUnfinishedDiaries.length" class="section-block">
       <div class="section-heading">
         <h2>继续草稿</h2>
-        <span>{{ store.drafts.length }} 篇未完成</span>
+        <span>{{ unfinishedDiaries.length }} 篇未完成</span>
       </div>
-      <article v-for="draft in visibleDrafts" :key="draft.id" class="home-diary-card" @click="openDiary(draft.id, true)">
+      <article v-for="draft in visibleUnfinishedDiaries" :key="draft.id" class="home-diary-card" @click="openDiary(draft.id, true)">
         <div class="diary-thumb draft">
           <img v-if="draft.cardImageUrl" :src="draft.cardImageUrl" alt="" />
-          <span v-else class="thumb-fallback">草稿</span>
+          <span v-else class="thumb-fallback">{{ diaryStatusLabel(draft.status) }}</span>
         </div>
         <div>
           <strong>{{ draft.date }}</strong>
           <p>{{ draft.body || "还没有写正文，点这里继续补上。" }}</p>
-          <span>{{ draft.stickers.length }} 张贴纸 · {{ draft.mood }}{{ diaryHasPendingSync(draft.id) ? " · 待同步" : "" }}</span>
+          <span>{{ draft.stickers.length }} 张贴纸 · {{ diaryStatusLabel(draft.status) }}{{ diaryHasPendingSync(draft.id) ? " · 待同步" : "" }}</span>
         </div>
       </article>
     </section>
