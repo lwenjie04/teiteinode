@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Sticker } from "@tietie/shared";
+import type { Diary, Sticker } from "@tietie/shared";
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useDiaryStore } from "../stores/diaryStore";
@@ -9,7 +9,7 @@ const route = useRoute();
 const router = useRouter();
 const store = useDiaryStore();
 const ui = useUiStore();
-const diary = computed(() => store.diaries.find((item) => item.id === route.params.id) ?? store.latest);
+const diary = computed(() => store.diaries.find((item) => item.id === route.params.id) ?? null);
 const renderingImage = ref(false);
 const brokenStickerIds = ref(new Set<string>());
 const brokenCardImage = ref(false);
@@ -104,8 +104,8 @@ function stickerNeedsRepair(sticker: Sticker) {
   return brokenStickerIds.value.has(sticker.id) || sticker.status === "failed" || stickerHasVolatileUrl(sticker);
 }
 
-function diaryTitle(status: NonNullable<typeof diary.value>["status"]) {
-  const labels: Record<NonNullable<typeof diary.value>["status"], string> = {
+function diaryTitle(status: Diary["status"]) {
+  const labels: Record<Diary["status"], string> = {
     draft: "未完成草稿",
     processing: "处理中",
     done: "日记详情",
@@ -516,6 +516,20 @@ async function deleteCurrentDiary() {
       <button class="secondary-action" type="button" :disabled="renderingImage || !canExportDiary" @click="exportImage">导出图片</button>
       <button class="secondary-action" type="button" :disabled="!canCopyText" @click="copyText">复制文字</button>
       <button class="secondary-action danger-action" type="button" @click="deleteCurrentDiary">删除</button>
+    </div>
+  </section>
+  <section v-else class="detail-page">
+    <div class="page-title">
+      <p class="eyebrow">未找到</p>
+      <h1>日记不存在</h1>
+    </div>
+
+    <article class="detail-card">
+      <p>这篇日记可能已被删除，或者还没有同步到这台设备。</p>
+    </article>
+
+    <div class="footer-actions">
+      <button class="primary-action" type="button" @click="router.push('/timeline')">返回时间线</button>
     </div>
   </section>
 </template>
