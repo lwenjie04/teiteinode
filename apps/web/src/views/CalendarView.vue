@@ -39,13 +39,17 @@ function goToday() {
   monthCursor.value = startOfMonth(new Date());
 }
 
+function diaryNeedsEditing(diary: Diary) {
+  return diary.status !== "done";
+}
+
 async function openOrCreateDiary(day: CalendarDay) {
   if (day.diaries.length > 1) {
     router.push({ path: "/timeline", query: { date: day.dateKey } });
     return;
   }
   if (day.latest) {
-    router.push(`/diaries/${day.latest.id}`);
+    router.push(diaryNeedsEditing(day.latest) ? `/diaries/${day.latest.id}/edit` : `/diaries/${day.latest.id}`);
     return;
   }
   if (creatingDate.value) return;
