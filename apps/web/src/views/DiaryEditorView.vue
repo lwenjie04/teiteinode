@@ -983,6 +983,10 @@ function nextEditorStep() {
 }
 
 function previousEditorStep() {
+  if (generatingText.value) {
+    ui.showToast("日记文字生成中，完成后再返回上一步", "warning");
+    return;
+  }
   activeEditorStep.value = Math.max(1, activeEditorStep.value - 1);
 }
 
@@ -2040,7 +2044,7 @@ async function save(status: "draft" | "done" = "draft") {
         </section>
 
         <div class="wizard-actions">
-          <button class="secondary-action" type="button" :disabled="activeEditorStep === 1" @click="previousEditorStep">上一步</button>
+          <button class="secondary-action" type="button" :disabled="activeEditorStep === 1 || generatingText" @click="previousEditorStep">上一步</button>
           <button v-if="activeEditorStep < editorSteps.length" class="primary-action" type="button" :disabled="isBusy || !canGoNextStep" @click="nextEditorStep">下一步</button>
           <button v-else class="primary-action" type="button" :disabled="savingDiary || generatingText" @click="save('done')">{{ savingDiary ? "保存中" : "完成保存" }}</button>
         </div>
