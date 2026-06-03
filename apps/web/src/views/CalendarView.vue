@@ -68,8 +68,8 @@ async function openOrCreateDiary(day: CalendarDay) {
   }
 }
 
-function openDiaryById(id: string) {
-  router.push(`/diaries/${id}`);
+function openDiary(diary: Diary) {
+  router.push(diaryNeedsEditing(diary) ? `/diaries/${diary.id}/edit` : `/diaries/${diary.id}`);
 }
 
 function diaryHasPendingSync(id: string) {
@@ -231,7 +231,7 @@ const topMood = computed(() => {
       </div>
 
       <div class="timeline-list">
-        <article v-for="diary in currentMonthDiaries" :key="diary.id" class="diary-row" @click="openDiaryById(diary.id)">
+        <article v-for="diary in currentMonthDiaries" :key="diary.id" class="diary-row" @click="openDiary(diary)">
           <div class="diary-thumb" :class="diary.status">
             <span>{{ diary.mood }}</span>
           </div>
