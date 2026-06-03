@@ -89,24 +89,30 @@ async function startDraft(files?: FileList | null) {
     background: settings.values.defaultBackground
   });
   if (files?.length) {
-    let compressedCount = 0;
-    for (const file of Array.from(files).slice(0, 6)) {
-      const source = await imageSourceFor(file);
-      if (source.compressed) compressedCount += 1;
-      if (!source.uploaded) {
-        await saveLocalAsset({
-          id: crypto.randomUUID(),
-          filename: source.filename,
-          mimeType: source.mimeType,
-          size: source.size,
-          url: source.url,
-          createdAt: new Date().toISOString()
-        });
+    try {
+      let compressedCount = 0;
+      for (const file of Array.from(files).slice(0, 6)) {
+        const source = await imageSourceFor(file);
+        if (source.compressed) compressedCount += 1;
+        if (!source.uploaded) {
+          await saveLocalAsset({
+            id: crypto.randomUUID(),
+            filename: source.filename,
+            mimeType: source.mimeType,
+            size: source.size,
+            url: source.url,
+            createdAt: new Date().toISOString()
+          });
+        }
+        await store.addSticker(draft.id, source.url);
       }
-      await store.addSticker(draft.id, source.url);
+      const compressText = compressedCount ? `，已压缩 ${compressedCount} 张大图` : "";
+      ui.showToast(auth.token ? `照片已添加，并尝试上传素材${compressText}` : `照片已添加到本地草稿${compressText}`, "success");
+    } catch {
+      await store.removeDiary(draft.id);
+      ui.showToast("照片读取失败，请换一张再试", "warning");
+      return;
     }
-    const compressText = compressedCount ? `，已压缩 ${compressedCount} 张大图` : "";
-    ui.showToast(auth.token ? `照片已添加，并尝试上传素材${compressText}` : `照片已添加到本地草稿${compressText}`, "success");
   }
   await router.push(`/diaries/${draft.id}/edit`);
 }
