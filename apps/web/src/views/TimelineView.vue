@@ -71,6 +71,17 @@ const doneCount = computed(() => store.doneDiaries.length);
 const draftCount = computed(() => store.drafts.length);
 const todayCount = computed(() => store.diaries.filter((diary) => diary.date === todayKey).length);
 const monthCount = computed(() => store.diaries.filter((diary) => diary.date.startsWith(monthKey)).length);
+const pendingSyncDiaryIds = computed(() => {
+  const ids = new Set<string>();
+  for (const item of store.syncQueueItems) {
+    if (!item.type.startsWith("diary:")) continue;
+    const payload = item.payload;
+    if (!payload || typeof payload !== "object") continue;
+    const id = (payload as { id?: unknown }).id;
+    if (typeof id === "string") ids.add(id);
+  }
+  return ids;
+});
 const filterLabel = computed(() => {
   if (!hasActiveFilters.value) return `${filteredDiaries.value.length} 篇日记`;
   return `已筛出 ${filteredDiaries.value.length} 篇`;
@@ -97,6 +108,10 @@ function resetFilters() {
 
 function setStatusFilter(status: StatusFilter) {
   statusFilter.value = status;
+}
+
+function diaryHasPendingSync(id: string) {
+  return pendingSyncDiaryIds.value.has(id);
 }
 
 function openDiary(id: string, edit = false) {
@@ -244,6 +259,7 @@ async function undoDelete() {
           <div class="row-meta">
             <strong>{{ diary.date }}</strong>
             <span>{{ diary.status === "draft" ? "草稿" : diary.mood }}</span>
+            <span v-if="diaryHasPendingSync(diary.id)" class="sync-pending">待同步</span>
           </div>
           <p>{{ diary.body || "还没写完的小日记" }}</p>
           <div class="row-footer">
