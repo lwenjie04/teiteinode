@@ -128,6 +128,14 @@ async function handleFiles(event: Event) {
   }
 }
 
+async function startBlankDraft() {
+  try {
+    await startDraft();
+  } finally {
+    creatingDraft.value = false;
+  }
+}
+
 function openDiary(id: string, edit = false) {
   router.push(edit ? `/diaries/${id}/edit` : `/diaries/${id}`);
 }
@@ -162,6 +170,7 @@ function diaryStatusLabel(status: Diary["status"]) {
       </div>
       <div class="hero-link-row">
         <button class="link-action" type="button" :disabled="creatingDraft" @click="fileInput?.click()">从相册选</button>
+        <button class="link-action" type="button" :disabled="creatingDraft" @click="startBlankDraft">先写文字</button>
       </div>
     </div>
 
