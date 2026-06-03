@@ -327,8 +327,13 @@ function downloadImageBlob(blob: Blob) {
   const url = URL.createObjectURL(blob);
   link.download = `贴贴日记-${diary.value.date}.png`;
   link.href = url;
-  link.click();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  document.body.append(link);
+  try {
+    link.click();
+  } finally {
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
 }
 
 function isShareAbort(error: unknown) {
