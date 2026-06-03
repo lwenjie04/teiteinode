@@ -1212,6 +1212,35 @@ async function removeSelectedSticker() {
   ui.showToast("已删除贴纸", "info");
 }
 
+async function addSubjectFromSelectedSource() {
+  if (!diary.value || !selectedSticker.value || isBusy.value) return;
+  const sourceUrl = selectedSticker.value.sourceImageUrl ?? selectedSticker.value.originalFileUrl ?? selectedSticker.value.fileUrl;
+  const maxZIndex = Math.max(0, ...diary.value.stickers.map((sticker) => sticker.zIndex));
+  const sticker: Sticker = {
+    ...selectedSticker.value,
+    id: crypto.randomUUID(),
+    diaryId: diary.value.id,
+    fileUrl: sourceUrl,
+    sourceImageUrl: sourceUrl,
+    originalFileUrl: sourceUrl,
+    variant: "白边原图贴纸",
+    status: "ready",
+    selection: undefined,
+    errorMessage: undefined,
+    x: Math.min(90, selectedSticker.value.x + 8),
+    y: Math.min(84, selectedSticker.value.y + 8),
+    rotation: selectedSticker.value.rotation > 0 ? -5 : 5,
+    zIndex: maxZIndex + 1
+  };
+  await store.updateDiary(diary.value.id, { stickers: [...diary.value.stickers, sticker] });
+  selectedStickerId.value = sticker.id;
+  selectedDecorationId.value = null;
+  activeEditorStep.value = 2;
+  selectionMode.value = "point";
+  aiNotice.value = "已回到同一张原图，点一下或框出下一个主体。";
+  ui.showToast("继续选择同图主体", "success");
+}
+
 async function autoLayout(mode: "scatter" | "polaroid" | "comic") {
   if (!diary.value || isBusy.value) return;
   const layouts = diary.value.stickers.map((sticker, index) => {
@@ -1855,6 +1884,9 @@ async function save(status: "draft" | "done" = "draft") {
             <button v-for="variant in stickerVariants" :key="variant" class="chip button-chip" :class="{ active: selectedSticker?.variant === variant }" type="button" :disabled="isBusy || !selectedSticker" @click="setVariant(variant)">
               {{ variant }}
             </button>
+          </div>
+          <div class="hero-actions">
+            <button class="secondary-action" type="button" :disabled="isBusy || !selectedSticker" @click="addSubjectFromSelectedSource">继续抠同图主体</button>
           </div>
         </section>
 
