@@ -1591,6 +1591,11 @@ async function generateText() {
 
 async function save(status: "draft" | "done" = "draft") {
   if (!diary.value || savingDiary.value) return;
+  if (status === "done" && !form.body.trim()) {
+    activeEditorStep.value = 5;
+    ui.showToast("先写一点日记文字，再完成保存", "warning");
+    return;
+  }
   savingDiary.value = true;
   const diaryId = diary.value.id;
   const previousCardImageUrl = diary.value.cardImageUrl;
