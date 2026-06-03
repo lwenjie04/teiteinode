@@ -1062,6 +1062,7 @@ async function requireLoginSync(action: "push" | "pull" | "both") {
       <div class="hero-actions compact">
         <button class="secondary-action" type="button" :disabled="store.syncing" @click="refreshSyncDiagnostics(true)">刷新诊断</button>
         <button class="secondary-action" type="button" :disabled="store.syncing || !store.pendingSyncCount" @click="compactSyncDiagnostics">整理队列</button>
+        <button class="secondary-action" type="button" :disabled="store.syncing || !auth.isLoggedIn || !store.pendingSyncCount" @click="requireLoginSync('both')">重试同步</button>
       </div>
       <div v-if="visibleSyncQueueItems.length" class="sync-queue-list">
         <article v-for="item in visibleSyncQueueItems" :key="item.id" class="health-row">
