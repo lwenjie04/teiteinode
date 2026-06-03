@@ -1275,7 +1275,7 @@ async function addSubjectFromSelectedSource() {
 }
 
 async function autoLayout(mode: "scatter" | "polaroid" | "comic") {
-  if (!diary.value || isBusy.value) return;
+  if (!diary.value || isBusy.value || !diary.value.stickers.length) return;
   const layouts = diary.value.stickers.map((sticker, index) => {
     if (mode === "polaroid") return { ...sticker, x: 50, y: 30 + index * 12, scale: index === 0 ? 1.24 : 0.82, rotation: index % 2 === 0 ? -3 : 4, zIndex: index + 1 };
     if (mode === "comic") {
@@ -1939,9 +1939,9 @@ async function save(status: "draft" | "done" = "draft") {
             <span>一键整理</span>
           </div>
           <div class="tool-grid small-tools">
-            <button type="button" :disabled="isBusy" @click="autoLayout('scatter')">手账散落</button>
-            <button type="button" :disabled="isBusy" @click="autoLayout('polaroid')">拍立得</button>
-            <button type="button" :disabled="isBusy" @click="autoLayout('comic')">漫画分镜</button>
+            <button type="button" :disabled="isBusy || !diary.stickers.length" @click="autoLayout('scatter')">手账散落</button>
+            <button type="button" :disabled="isBusy || !diary.stickers.length" @click="autoLayout('polaroid')">拍立得</button>
+            <button type="button" :disabled="isBusy || !diary.stickers.length" @click="autoLayout('comic')">漫画分镜</button>
           </div>
         </section>
 
