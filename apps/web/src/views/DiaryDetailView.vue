@@ -78,8 +78,16 @@ async function copyText() {
     ui.showToast("还没有可复制的日记文字", "warning");
     return;
   }
-  await navigator.clipboard.writeText(diary.value.body);
-  ui.showToast("日记文字已复制", "success");
+  if (!navigator.clipboard?.writeText) {
+    ui.showToast("当前浏览器不支持一键复制", "warning");
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(diary.value.body);
+    ui.showToast("日记文字已复制", "success");
+  } catch {
+    ui.showToast("复制失败，请手动选择文字复制", "warning");
+  }
 }
 
 function loadImage(src: string) {
