@@ -54,14 +54,15 @@ const originalPhotoItems = computed(() => {
     if (!sourceUrl) continue;
     sources.set(sourceUrl, (sources.get(sourceUrl) ?? 0) + 1);
   }
-  return [...sources.entries()].map(([url, count], index) => ({ id: `${index}:${url}`, url, count }));
+  return [...sources.entries()].map(([url, count], index) => ({ id: `${index}:${url}`, url, count, filename: `贴贴日记-${diary.value?.date}-原始照片-${index + 1}.png` }));
 });
 const stickerMaterialItems = computed(() =>
   diary.value?.stickers.map((sticker, index) => ({
     id: sticker.id,
     url: sticker.fileUrl,
     title: `贴纸 ${index + 1}`,
-    subtitle: sticker.variant
+    subtitle: sticker.variant,
+    filename: `贴贴日记-${diary.value?.date}-贴纸-${index + 1}.png`
   })) ?? []
 );
 
@@ -336,6 +337,19 @@ function downloadImageBlob(blob: Blob) {
   }
 }
 
+function downloadMaterial(url: string, filename: string) {
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  try {
+    link.click();
+    ui.showToast("素材已开始保存", "success");
+  } finally {
+    link.remove();
+  }
+}
+
 function isShareAbort(error: unknown) {
   return error instanceof DOMException && error.name === "AbortError";
 }
@@ -515,6 +529,7 @@ async function deleteCurrentDiary() {
             <strong>原始照片</strong>
             <span>{{ item.count }} 个主体来源</span>
           </div>
+          <button type="button" class="secondary-action compact-action" @click="downloadMaterial(item.url, item.filename)">保存原图</button>
         </article>
       </div>
       <div v-if="stickerMaterialItems.length" class="detail-material-grid">
@@ -524,6 +539,7 @@ async function deleteCurrentDiary() {
             <strong>{{ item.title }}</strong>
             <span>{{ item.subtitle }}</span>
           </div>
+          <button type="button" class="secondary-action compact-action" @click="downloadMaterial(item.url, item.filename)">保存贴纸</button>
         </article>
       </div>
     </section>
