@@ -53,6 +53,7 @@ const router = useRouter();
 const email = ref("");
 const code = ref("");
 const aiMessage = ref("检查中");
+const checkingAiStatus = ref(false);
 const fileStats = ref({
   storage: "unknown",
   count: 0,
@@ -213,14 +214,7 @@ const syncQueueSummary = computed(() => {
 const visibleSyncQueueItems = computed(() => store.syncQueueItems.slice(-5).reverse());
 
 onMounted(async () => {
-  try {
-    const status = await getAiStatus();
-    store.aiAvailable = status.available;
-    aiMessage.value = status.message;
-  } catch {
-    store.aiAvailable = false;
-    aiMessage.value = "AI 服务暂时不可用";
-  }
+  await refreshAiStatus();
   await store.refreshPendingSyncCount();
   await refreshFileStats();
   await refreshBrowserStorage();
@@ -234,6 +228,24 @@ onMounted(async () => {
 onUnmounted(() => {
   window.clearInterval(clockTimer);
 });
+
+async function refreshAiStatus(showToast = false) {
+  checkingAiStatus.value = true;
+  try {
+    const status = await getAiStatus();
+    store.aiAvailable = status.available;
+    aiMessage.value = status.message;
+    if (showToast) {
+      ui.showToast(status.available ? "AI 服务可用" : "AI 服务未配置", status.available ? "success" : "warning");
+    }
+  } catch {
+    store.aiAvailable = false;
+    aiMessage.value = "AI 服务暂时不可用";
+    if (showToast) ui.showToast("AI 服务暂时不可用", "warning");
+  } finally {
+    checkingAiStatus.value = false;
+  }
+}
 
 function formatBytes(size: number) {
   if (size < 1024) return `${size} B`;
@@ -1218,10 +1230,15 @@ async function requireLoginSync(action: "push" | "pull" | "both") {
     <section class="section-block quiet-settings">
       <div class="section-heading">
         <h2>隐私与智能功能</h2>
-        <span>{{ store.aiAvailable ? "可用" : "未配置" }}</span>
+        <span>{{ checkingAiStatus ? "检查中" : store.aiAvailable ? "可用" : "未配置" }}</span>
       </div>
       <p class="subtle-copy">日记会先保存在这台设备；登录后才会同步到云端。AI 未配置时，生成日记和抠图会使用本地兜底体验。</p>
       <p class="subtle-copy">{{ aiMessage }}</p>
+      <div class="hero-actions compact">
+        <button class="secondary-action" type="button" :disabled="checkingAiStatus" @click="refreshAiStatus(true)">
+          {{ checkingAiStatus ? "检查中" : "重新检查 AI 状态" }}
+        </button>
+      </div>
     </section>
 
     <section class="section-block quiet-settings">
