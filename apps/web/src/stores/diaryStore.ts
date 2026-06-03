@@ -90,6 +90,32 @@ function normalizeDiaries(diaries: Diary[]) {
   return diaries.map(normalizeDiary);
 }
 
+const importableDiaryStatuses = new Set<Diary["status"]>(["draft", "processing", "done", "syncing", "sync_failed"]);
+
+function isNonEmptyString(value: unknown) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isImportableDiary(diary: unknown): diary is Diary {
+  if (!diary || typeof diary !== "object") return false;
+  const candidate = diary as Partial<Diary>;
+  return (
+    isNonEmptyString(candidate.id) &&
+    isNonEmptyString(candidate.localId) &&
+    importableDiaryStatuses.has(candidate.status as Diary["status"]) &&
+    typeof candidate.body === "string" &&
+    isNonEmptyString(candidate.date) &&
+    typeof candidate.mood === "string" &&
+    Array.isArray(candidate.tags) &&
+    typeof candidate.writingStyle === "string" &&
+    typeof candidate.length === "string" &&
+    typeof candidate.background === "string" &&
+    isNonEmptyString(candidate.createdAt) &&
+    isNonEmptyString(candidate.updatedAt) &&
+    isNonEmptyString(candidate.lastModifiedAt)
+  );
+}
+
 function deletedIdsFromQueue(items: Array<{ type: string; payload: unknown }>) {
   return items
     .filter((item) => item.type === "diary:delete")
@@ -354,6 +380,9 @@ export const useDiaryStore = defineStore("diaries", {
     async importBackup(backup: DiaryBackup) {
       if (backup.app !== "贴贴日记" || !Array.isArray(backup.diaries)) {
         throw new Error("备份文件格式不正确");
+      }
+      if (!backup.diaries.every(isImportableDiary)) {
+        throw new Error("备份里有损坏的日记，请重新选择有效备份");
       }
       const incoming = normalizeDiaries(backup.diaries);
       const merged = new Map<string, Diary>();
