@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { moods } from "@tietie/shared";
+import type { Diary } from "@tietie/shared";
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { formatLocalDateKey } from "../lib/dateTools";
@@ -112,6 +113,17 @@ function setStatusFilter(status: StatusFilter) {
 
 function diaryHasPendingSync(id: string) {
   return pendingSyncDiaryIds.value.has(id);
+}
+
+function diaryTimelineStatus(diary: Diary) {
+  const labels: Record<Diary["status"], string> = {
+    draft: "草稿",
+    processing: "处理中",
+    done: diary.mood,
+    syncing: "同步中",
+    sync_failed: "同步失败"
+  };
+  return labels[diary.status];
 }
 
 function openDiary(id: string, edit = false) {
@@ -258,7 +270,7 @@ async function undoDelete() {
         <div>
           <div class="row-meta">
             <strong>{{ diary.date }}</strong>
-            <span>{{ diary.status === "draft" ? "草稿" : diary.mood }}</span>
+            <span>{{ diaryTimelineStatus(diary) }}</span>
             <span v-if="diaryHasPendingSync(diary.id)" class="sync-pending">待同步</span>
           </div>
           <p>{{ diary.body || "还没写完的小日记" }}</p>
