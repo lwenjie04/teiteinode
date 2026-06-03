@@ -816,30 +816,34 @@ async function addFiles(event: Event) {
   const files = Array.from(input.files).slice(0, repairMode ? 1 : 8);
   let uploadedCount = 0;
   let compressedCount = 0;
-  for (const file of files) {
-    const source = await imageSourceFor(file);
-    if (source.uploaded) uploadedCount += 1;
-    if (source.compressed) compressedCount += 1;
-    const wasRepairingCard = repairingCardImage.value;
-    if (repairMode && (await replaceRepairTargetWithSource(source))) {
-      input.value = "";
-      const compressText = compressedCount ? "，已压缩大图" : "";
-      const targetName = wasRepairingCard ? "卡片预览图" : "贴纸";
-      ui.showToast(auth.token ? `已用新照片替换${targetName}${compressText}` : `已用本地照片替换${targetName}${compressText}`, "success");
-      if (assetPanelOpen.value) await refreshAssetLibrary();
-      return;
+  try {
+    for (const file of files) {
+      const source = await imageSourceFor(file);
+      if (source.uploaded) uploadedCount += 1;
+      if (source.compressed) compressedCount += 1;
+      const wasRepairingCard = repairingCardImage.value;
+      if (repairMode && (await replaceRepairTargetWithSource(source))) {
+        const compressText = compressedCount ? "，已压缩大图" : "";
+        const targetName = wasRepairingCard ? "卡片预览图" : "贴纸";
+        ui.showToast(auth.token ? `已用新照片替换${targetName}${compressText}` : `已用本地照片替换${targetName}${compressText}`, "success");
+        if (assetPanelOpen.value) await refreshAssetLibrary();
+        return;
+      }
+      await saveImageSourceLocally(source);
+      const sticker = await store.addSticker(diary.value.id, source.localUrl, "白边原图贴纸");
+      if (sticker && source.uploaded) {
+        await store.updateSticker(diary.value.id, sticker.id, { remoteImageUrl: source.url });
+      }
+      selectedStickerId.value = sticker?.id ?? selectedStickerId.value;
     }
-    await saveImageSourceLocally(source);
-    const sticker = await store.addSticker(diary.value.id, source.localUrl, "白边原图贴纸");
-    if (sticker && source.uploaded) {
-      await store.updateSticker(diary.value.id, sticker.id, { remoteImageUrl: source.url });
-    }
-    selectedStickerId.value = sticker?.id ?? selectedStickerId.value;
+    const compressText = compressedCount ? `，已压缩 ${compressedCount} 张大图` : "";
+    ui.showToast(auth.token ? `已添加 ${files.length} 个贴纸，上传 ${uploadedCount} 张${compressText}` : `已添加 ${files.length} 个本地贴纸${compressText}`, "success");
+    if (assetPanelOpen.value) await refreshAssetLibrary();
+  } catch {
+    ui.showToast("照片读取失败，请换一张再试", "warning");
+  } finally {
+    input.value = "";
   }
-  input.value = "";
-  const compressText = compressedCount ? `，已压缩 ${compressedCount} 张大图` : "";
-  ui.showToast(auth.token ? `已添加 ${files.length} 个贴纸，上传 ${uploadedCount} 张${compressText}` : `已添加 ${files.length} 个本地贴纸${compressText}`, "success");
-  if (assetPanelOpen.value) await refreshAssetLibrary();
 }
 
 async function patchSticker(patch: Partial<Sticker>) {
