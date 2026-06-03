@@ -2039,4 +2039,14 @@ async function save(status: "draft" | "done" = "draft") {
       </div>
     </section>
   </section>
+  <section v-else class="editor-page">
+    <div class="editor-hero">
+      <div>
+        <p class="eyebrow">未找到</p>
+        <h1>这篇日记不存在</h1>
+        <p>它可能已被删除，或者还没有同步到这台设备。</p>
+      </div>
+      <button class="primary-action" type="button" @click="router.push('/timeline')">返回时间线</button>
+    </div>
+  </section>
 </template>
