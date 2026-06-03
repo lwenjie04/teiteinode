@@ -1212,6 +1212,22 @@ async function removeSelectedSticker() {
   ui.showToast("已删除贴纸", "info");
 }
 
+async function duplicateSelectedSticker() {
+  if (!diary.value || !selectedSticker.value || isBusy.value) return;
+  const maxZIndex = Math.max(0, ...diary.value.stickers.map((sticker) => sticker.zIndex));
+  const sticker: Sticker = {
+    ...selectedSticker.value,
+    id: crypto.randomUUID(),
+    x: Math.min(94, selectedSticker.value.x + 6),
+    y: Math.min(86, selectedSticker.value.y + 6),
+    zIndex: maxZIndex + 1
+  };
+  await store.updateDiary(diary.value.id, { stickers: [...diary.value.stickers, sticker] });
+  selectedStickerId.value = sticker.id;
+  selectedDecorationId.value = null;
+  ui.showToast("已复制贴纸", "success");
+}
+
 async function addSubjectFromSelectedSource() {
   if (!diary.value || !selectedSticker.value || isBusy.value) return;
   const sourceUrl = selectedSticker.value.sourceImageUrl ?? selectedSticker.value.originalFileUrl ?? selectedSticker.value.fileUrl;
@@ -1967,6 +1983,8 @@ async function save(status: "draft" | "done" = "draft") {
             <button type="button" :disabled="isBusy" @click="patchSticker({ rotation: (selectedSticker?.rotation ?? 0) - 8 })">左旋</button>
             <button type="button" :disabled="isBusy" @click="patchSticker({ rotation: (selectedSticker?.rotation ?? 0) + 8 })">右旋</button>
             <button type="button" :disabled="isBusy" @click="patchSticker({ zIndex: (selectedSticker?.zIndex ?? 1) + 1 })">置顶</button>
+            <button type="button" :disabled="isBusy || !selectedSticker" @click="patchSticker({ zIndex: Math.max(0, (selectedSticker?.zIndex ?? 1) - 1) })">置底</button>
+            <button type="button" :disabled="isBusy || !selectedSticker" @click="duplicateSelectedSticker">复制</button>
             <button type="button" :disabled="isBusy" @click="removeSelectedSticker">删除</button>
           </div>
         </section>
