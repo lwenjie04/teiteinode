@@ -298,6 +298,8 @@ async function undoDelete() {
       <article v-if="!filteredDiaries.length" class="empty-list">
         <strong>没有找到日记</strong>
         <span>换个关键词，或者清空筛选再看看。</span>
+        <button v-if="hasActiveFilters" class="secondary-action compact-action" type="button" @click="resetFilters">清空筛选</button>
+        <button v-else class="primary-action compact-action" type="button" @click="router.push('/create')">开始贴一篇</button>
       </article>
     </div>
   </section>
